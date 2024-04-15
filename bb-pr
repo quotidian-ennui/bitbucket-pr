@@ -1,0 +1,134 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+curl_wrapper() {
+  curl -fsSL -u"${BITBUCKET_USER}:${BITBUCKET_TOKEN}" -H "Accept: application/json" "$@"
+}
+
+curl_wrapper_post() {
+  curl -X POST -fsSL -u"${BITBUCKET_USER}:${BITBUCKET_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -H "Accept: application/json" "$@"
+}
+
+# Need to get someone to let me test on a mac.
+# Macs can use pbcopy apparently, but they should just
+# set the BB_PR_CLIPBOARD env variable
+clipboard_exe() {
+  if [[ -z "$BB_PR_CLIPBOARD" ]]; then
+    if [[ -n "$WSL_DISTRO_NAME" ]]; then
+      LOCAL_DRIVE_C=$(mount | grep "C:" | awk '{print $3}')
+      echo "$LOCAL_DRIVE_C/windows/system32/clip.exe"
+    elif [[ -n "${XDG_CURRENT_DESKTOP}" ]]; then
+      echo "xclip"
+    fi
+  else
+    echo "$BB_PR_CLIPBOARD"
+  fi
+}
+
+BITBUCKET_API_URL="https://api.bitbucket.org/2.0/repositories"
+GIT_REMOTE=$(git remote get-url origin | cut -f2 -d':') || true
+BITBUCKET_SLUG=${GIT_REMOTE%.git}
+ACTION_LIST="help|list|squash-msg|squash-merge"
+
+action_help() {
+  cat <<EOF
+
+Usage: bb-pr [$ACTION_LIST] [options]
+  help         : show this help
+  list         : list the PRs in this repo
+  squash-msg   : copy a reasonable message to the clipboard for merging a PR
+  squash-merge : merge the PR using the message from 'msg' (currently no-op)
+
+'squash-msg'
+'squash-merge'
+Requires the PR number as its only parameter
+
+Requires you to have exported 2 environment variables:
+export BITBUCKET_USER=my_bitbucket_username
+export BITBUCKET_TOKEN=my_bitbucket_app_password
+
+c.f. https://support.atlassian.com/bitbucket-cloud/docs/app-passwords/
+
+Uses:
+- jq : https://github.com/jqlang/jq
+- jf : https://github.com/sayanarijit/jf
+
+EOF
+  exit 1
+}
+
+action_list() {
+  local jq_transform='.values[]
+    | { "id": (.id | tostring), "title": .title, "url": .links.html.href }
+    | "\(.id)|\(.title)|\(.url)"
+  '
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests"
+  curl_wrapper "$pull_request_url" | jq --raw-output "$jq_transform" | column -s "|" -t -N "ID,TITLE,URL"
+}
+
+
+action_squash-msg() {
+  local squash_merge_msg
+  squash_merge_msg=$(emit_squash_merge_msg "$1")
+  # shellcheck disable=SC2091
+  echo "$squash_merge_msg" | eval "$(clipboard_exe)"
+  echo "---"
+  echo "$squash_merge_msg"
+  echo "---"
+  echo "is now in your clipboard"
+}
+
+action_squash-merge() {
+  local squash_merge_msg
+  local json_payload
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$1/merge"
+  squash_merge_msg=$(emit_squash_merge_msg "$1")
+  # The docs aren't clear
+  # https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
+  # mentions a mandatory 'type' in the request body, but there's no fscking docs
+  # as to what the value should be....
+  json_payload=$(jf '{%**q}' "message" "$squash_merge_msg" "close_source_branch" "true" "merge_strategy" "squash")
+  # probably want some tempfile action for a bit of --data @filename
+  echo $json_payload
+}
+
+emit_squash_merge_msg() {
+  local body
+  local pr_approvers
+  local squash_merge_details
+  local title
+  local description
+  local jq_approvers='.participants | .[] | select(.approved==true) | "Approved by \(.user.display_name)"'
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$1"
+
+  body=$(curl_wrapper "$pull_request_url")
+  description=$(echo "$body" | jq --raw-output ".description")
+  title=$(echo "$body" | jq --raw-output ".title")
+  # Is - is nicer than *
+  squash_merge_details=$(echo "$description" | awk '/SQUASHMERGESTART/,/SQUASHMERGEEND/' \
+          | { grep -v "SQUASHMERGE" || test $? = 1; } \
+          | sed -E "s|^\*|-|")
+  pr_approvers=$(echo "$body" | jq --raw-output "$jq_approvers" )
+
+  local squash_merge_msg="$title
+
+$squash_merge_details
+$pr_approvers
+"
+  echo "$squash_merge_msg"
+}
+
+ACTION=$1 || true
+ACTION=${ACTION:="help"}
+if [[ -z "$GIT_REMOTE" ]]; then
+  ACTION="help"
+fi
+
+if [[ "$#" -ne "0" ]]; then shift; fi
+if [[ ! "${ACTION}" =~ ^$ACTION_LIST$ ]]; then
+  echo "Invalid action [$ACTION]"
+  action_help
+fi
+action_"$ACTION" "$@"
