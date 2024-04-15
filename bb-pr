@@ -91,7 +91,7 @@ action_squash-merge() {
   # as to what the value should be....
   json_payload=$(jf '{%**q}' "message" "$squash_merge_msg" "close_source_branch" "true" "merge_strategy" "squash")
   # probably want some tempfile action for a bit of --data @filename
-  echo $json_payload
+  echo "$json_payload"
 }
 
 emit_squash_merge_msg() {
