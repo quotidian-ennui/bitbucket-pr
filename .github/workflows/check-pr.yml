@@ -14,7 +14,7 @@ jobs:
       pull-requests: write
     steps:
       - name: checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
       - name: shellcheck
         uses: reviewdog/action-shellcheck@72365a51bf6476fe952a117c3ff703eb7775e40a # v1.20.0
         with:
@@ -31,7 +31,7 @@ jobs:
     if: |
       github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4
         with:
           fetch-depth: 0
       - name: committed
@@ -45,7 +45,7 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@9bb56186c3b09b4f86b1c65136769dd318469633 # v4.1.2
       - name: typos
         uses: crate-ci/typos@efad85b292e13df995ff2476013baaa5f1c30459 # v1.20.8
 
