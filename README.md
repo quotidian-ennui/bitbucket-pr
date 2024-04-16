@@ -46,15 +46,16 @@ bsh ❯ bb-pr
 Simple tooling that helps management of bitbucket pull requests from
 the commandline
 
-Usage: bb-pr [help|list|squash-msg|squash-merge|approve|unapprove] [options]
+Usage: bb-pr [help|list|squash-msg|squash-merge|approve|unapprove|decline] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   squash-msg   : copy a reasonable message to the clipboard for merging a PR
   squash-merge : merge the PR using the message from 'squash-msg'
   approve      : approve a PR (though should you from the CLI?)
   unapprove    : remove your approval
+  decline      : decline a PR
 
-'squash-msg' | 'squash-merge' | 'approve' | 'unapprove'
+'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
 Requires the PR number as its only parameter
 
 'list' can additionally filter by state
