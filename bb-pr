@@ -141,12 +141,12 @@ action_squash-msg() {
     exit 1
   fi
   squash_merge_msg=$(emit_squash_merge_msg "$pr_number")
-  # shellcheck disable=SC2091
-  echo "$squash_merge_msg" | eval "$(clipboard_exe)"
   echo "---"
   echo "$squash_merge_msg"
   echo "---"
   echo "is now in your clipboard"
+  # shellcheck disable=SC2091
+  echo "$squash_merge_msg" | eval "$(clipboard_exe)"
 }
 
 action_squash-merge() {
