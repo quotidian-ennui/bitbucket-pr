@@ -92,9 +92,7 @@ action_list() {
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests?state=$state"
 
   {
-    response=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
-    echo "$response" | jq --raw-output "$jq_transform"
-    next=$(echo "$response" | jq --raw-output ".next")
+    next="$pull_request_url"
     until [ "$next" == "null" ]; do
       response=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$next")
       echo "$response" | jq --raw-output "$jq_transform"
