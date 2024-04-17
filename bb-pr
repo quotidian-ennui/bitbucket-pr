@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
+# Requires you to have exported 2 environment variables:
+# export BITBUCKET_USER=my_bitbucket_username
+# export BITBUCKET_TOKEN=my_bitbucket_app_password
+#
+# c.f. https://support.atlassian.com/bitbucket-cloud/docs/app-passwords/
+# Requires:
+# - jq   : https://github.com/jqlang/jq
+# - jf   : https://github.com/sayanarijit/jf (to json encode multiline comments)
+# - curl : why of course it does!, why haven't you got it?
 
 set -eo pipefail
 
 BITBUCKET_API_URL="https://api.bitbucket.org/2.0/repositories"
 GIT_REMOTE=$(git remote get-url origin | cut -f2 -d':') || true
 BITBUCKET_SLUG=${GIT_REMOTE%.git}
-ACTION_LIST="help|list|squash-msg|squash-merge"
+ACTION_LIST="help|list|squash-msg|squash-merge|approve|unapprove|decline"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
+CURL_AUTH="${BITBUCKET_USER}:${BITBUCKET_TOKEN}"
+CURL_HEADER_CTYPE="Content-Type: application/json"
+CURL_HEADER_ACCEPT="Accept: application/json"
+CURL_FLAGS="-fsSL"
+
 trap cleanup 1 2 15
-
-curl_wrapper() {
-  curl -fsSL -u"${BITBUCKET_USER}:${BITBUCKET_TOKEN}" -H "Accept: application/json" "$@"
-}
-
-curl_wrapper_post() {
-  curl -X POST -fsSL -u"${BITBUCKET_USER}:${BITBUCKET_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -H "Accept: application/json" "$@"
-}
 
 # Need to get someone to let me test on a mac.
 # Macs can use pbcopy apparently, but they should just
@@ -45,25 +49,25 @@ cleanup() {
 action_help() {
   cat <<EOF
 
-Usage: bb-pr [$ACTION_LIST] [options]
-  help         : show this help
-  list         : list the PRs in this repo
-  squash-msg   : copy a reasonable message to the clipboard for merging a PR
-  squash-merge : merge the PR using the message from 'msg'
+Simple tooling that helps management of bitbucket pull requests from
+the commandline
 
-'squash-msg'
-'squash-merge'
+Usage: $(basename "$0") [$ACTION_LIST] [options]
+  help         : show this help
+  list         : list (open) PRs in this repo
+  squash-msg   : copy a reasonable message to the clipboard for merging a PR
+  squash-merge : merge the PR using the message from 'squash-msg'
+  approve      : approve a PR (though should you from the CLI?)
+  unapprove    : remove your approval
+  decline      : decline a PR
+
+'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
 Requires the PR number as its only parameter
 
-Requires you to have exported 2 environment variables:
-export BITBUCKET_USER=my_bitbucket_username
-export BITBUCKET_TOKEN=my_bitbucket_app_password
-
-c.f. https://support.atlassian.com/bitbucket-cloud/docs/app-passwords/
-
-Uses:
-- jq : https://github.com/jqlang/jq
-- jf : https://github.com/sayanarijit/jf
+'list' can additionally filter by state
+  -s : the state (e.g. -s OPEN) OPEN|MERGED|DECLINED|SUPERSEDED
+       If you get it wrong, you'll get all the PRs which may take
+       longer than you want. Defaults to 'OPEN'
 
 EOF
   exit 1
@@ -74,18 +78,58 @@ action_list() {
     | { "id": (.id | tostring), "title": .title, "url": .links.html.href }
     | "\(.id)|\(.title)|\(.url)"
   '
-  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests"
-  curl_wrapper "$pull_request_url" | jq --raw-output "$jq_transform" | column -s "|" -t -N "ID,TITLE,URL"
+  local response
+  local next
+  local state="OPEN"
+
+  while getopts 's:' flag; do
+    case "${flag}" in
+    s) state="${OPTARG}";;
+    *) action_help;;
+    esac
+  done
+  state=$(echo "$state" | tr '[:lower:]' '[:upper:]')
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests?state=$state"
+
+  {
+    next="$pull_request_url"
+    until [ "$next" == "null" ]; do
+      response=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$next")
+      echo "$response" | jq --raw-output "$jq_transform"
+      next=$(echo "$response" | jq --raw-output ".next")
+    done
+  } | sort | column -s "|" -t -N "ID,TITLE,URL"
+}
+
+action_decline() {
+  local pr_number="$1"
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/decline"
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+  curl -X POST $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '"\(.state)"'
 }
 
 
 action_approve() {
-  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$1/approve"
   local pr_number="$1"
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/approve"
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
-    exit
+    exit 1
   fi
+  curl -X POST $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '"\(.state)"'
+}
+
+action_unapprove() {
+  local pr_number="$1"
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/approve"
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+  curl -X DELETE $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url"
 }
 
 action_squash-msg() {
@@ -97,12 +141,12 @@ action_squash-msg() {
     exit 1
   fi
   squash_merge_msg=$(emit_squash_merge_msg "$pr_number")
-  # shellcheck disable=SC2091
-  echo "$squash_merge_msg" | eval "$(clipboard_exe)"
   echo "---"
   echo "$squash_merge_msg"
   echo "---"
   echo "is now in your clipboard"
+  # shellcheck disable=SC2091
+  echo "$squash_merge_msg" | eval "$(clipboard_exe)"
 }
 
 action_squash-merge() {
@@ -110,7 +154,7 @@ action_squash-merge() {
   local json_payload
   local pr_number="$1"
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/merge"
-  local response
+  local jq_transform='"\(.id)|\(.state)"'
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
     exit 1
@@ -124,8 +168,7 @@ action_squash-merge() {
   # probably want some tempfile action for a bit of --data @filename
   json_payload=$(jf '{%**q}' "type" "pullrequest" "message" "$squash_merge_msg" "merge_strategy" "squash")
   echo "$json_payload" > "$WORK_FILE"
-  echo "$json_payload"
-  curl_wrapper_post "$pull_request_url" "--data" "@$WORK_FILE" | jq .
+  curl -X POST $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" | jq --raw-output "$jq_transform" | column -s "|" -t -N "ID,STATE"
 }
 
 emit_squash_merge_msg() {
@@ -135,10 +178,10 @@ emit_squash_merge_msg() {
   local title
   local description
   local pr_number="$1"
-  local jq_approvers='.participants | .[] | select(.approved==true) | "Approved by \(.user.display_name)"'
+  local jq_approvers='.participants | .[] | select(.approved==true) | "Approved by: \(.user.display_name)"'
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
-  body=$(curl_wrapper "$pull_request_url")
+  body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
   description=$(echo "$body" | jq --raw-output ".description")
   title=$(echo "$body" | jq --raw-output ".title")
   # Is - is nicer than *
