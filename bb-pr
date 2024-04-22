@@ -119,37 +119,40 @@ action_list() {
 
 action_decline() {
   local pr_number="$1"
-  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/decline"
-
   pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
     exit 1
   fi
+
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/decline"
+
   curl -X POST $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '"\(.state)"'
 }
 
 action_approve() {
   local pr_number="$1"
-  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/approve"
-
   pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
     exit 1
   fi
+
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/approve"
+
   curl -X POST $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '"\(.state)"'
 }
 
 action_unapprove() {
   local pr_number="$1"
-  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/approve"
-
   pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
     exit 1
   fi
+
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/approve"
+
   curl -X DELETE $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url"
 }
 
@@ -175,7 +178,6 @@ action_squash-merge() {
   local squash_merge_msg
   local json_payload
   local pr_number="$1"
-  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/merge"
   local jq_transform='"\(.id)|\(.state)"'
 
   pr_number=$(get_pr_number "$pr_number")
@@ -183,6 +185,8 @@ action_squash-merge() {
     echo ">>> No PR"
     exit 1
   fi
+
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/merge"
 
   squash_merge_msg=$(emit_squash_merge_msg "$pr_number")
   # https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
