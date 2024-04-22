@@ -14,7 +14,7 @@ set -eo pipefail
 BITBUCKET_API_URL="https://api.bitbucket.org/2.0/repositories"
 GIT_REMOTE=$(git remote get-url origin | cut -f2 -d':') || true
 BITBUCKET_SLUG=${GIT_REMOTE%.git}
-GIT_BRANCH=$(git branch --show-current)
+GIT_REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null | cut -f2- -d'/') || true
 ACTION_LIST="help|list|squash-msg|squash-merge|approve|unapprove|decline"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
@@ -49,8 +49,8 @@ cleanup() {
 
 get_pr_number() {
   local pr_number="$1"
-  if [[ -z "$pr_number" ]]; then
-    query=$(printf "source.branch.name=\"%s\" AND state=\"OPEN\"" "${GIT_BRANCH}")
+  if [[ -z "$pr_number" && -n "${GIT_REMOTE_BRANCH}" ]]; then
+    query=$(printf "source.branch.name=\"%s\" AND state=\"OPEN\"" "${GIT_REMOTE_BRANCH}")
     query_uri=$(printf %s "${query}" | jq -sRr @uri)
     local pull_request_query_url="https://api.bitbucket.org/2.0/repositories/${BITBUCKET_SLUG}/pullrequests?q=${query_uri}"
     pr_number=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "${pull_request_query_url}" | jq .values[0].id)
