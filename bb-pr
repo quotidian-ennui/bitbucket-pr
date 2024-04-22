@@ -14,6 +14,7 @@ set -eo pipefail
 BITBUCKET_API_URL="https://api.bitbucket.org/2.0/repositories"
 GIT_REMOTE=$(git remote get-url origin | cut -f2 -d':') || true
 BITBUCKET_SLUG=${GIT_REMOTE%.git}
+GIT_BRANCH=$(git branch --show-current)
 ACTION_LIST="help|list|squash-msg|squash-merge|approve|unapprove|decline"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
@@ -44,6 +45,22 @@ cleanup() {
   if [[ -n "${WORK_FILE:-}" ]]; then
     rm -f "$WORK_FILE"
   fi
+}
+
+get_pr_number() {
+  local pr_number="$1"
+  if [[ -z "$pr_number" ]]; then
+    query=$(printf "source.branch.name=\"%s\" AND state=\"OPEN\"" "${GIT_BRANCH}")
+    query_uri=$(printf %s "${query}" | jq -sRr @uri)
+    local pull_request_query_url="https://api.bitbucket.org/2.0/repositories/${BITBUCKET_SLUG}/pullrequests?q=${query_uri}"
+    pr_number=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "${pull_request_query_url}" | jq .values[0].id)
+    if [ "$pr_number" != "null" ]; then
+      echo "$pr_number"
+    fi
+  else
+    echo "$pr_number"
+  fi
+
 }
 
 action_help() {
@@ -84,8 +101,8 @@ action_list() {
 
   while getopts 's:' flag; do
     case "${flag}" in
-    s) state="${OPTARG}";;
-    *) action_help;;
+    s) state="${OPTARG}" ;;
+    *) action_help ;;
     esac
   done
   state=$(echo "$state" | tr '[:lower:]' '[:upper:]')
@@ -104,6 +121,8 @@ action_list() {
 action_decline() {
   local pr_number="$1"
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/decline"
+
+  pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
     exit 1
@@ -111,10 +130,11 @@ action_decline() {
   curl -X POST $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '"\(.state)"'
 }
 
-
 action_approve() {
   local pr_number="$1"
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/approve"
+
+  pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
     exit 1
@@ -125,6 +145,8 @@ action_approve() {
 action_unapprove() {
   local pr_number="$1"
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/approve"
+
+  pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
     exit 1
@@ -136,6 +158,7 @@ action_squash-msg() {
   local pr_number=$1
   local squash_merge_msg
 
+  pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
     exit 1
@@ -155,10 +178,8 @@ action_squash-merge() {
   local pr_number="$1"
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/merge"
   local jq_transform='"\(.id)|\(.state)"'
-  if [[ -z "$pr_number" ]]; then
-    echo ">>> No PR"
-    exit 1
-  fi
+
+  pr_number=$(get_pr_number "$pr_number")
   squash_merge_msg=$(emit_squash_merge_msg "$pr_number")
   # https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
   # mentions a mandatory 'type' in the request body, but there's no docs
@@ -167,7 +188,7 @@ action_squash-merge() {
   # /repositories/{workspace}/{repo_slug}/pullrequests/{pull_request_id}
   # probably want some tempfile action for a bit of --data @filename
   json_payload=$(jf '{%**q}' "type" "pullrequest" "message" "$squash_merge_msg" "merge_strategy" "squash")
-  echo "$json_payload" > "$WORK_FILE"
+  echo "$json_payload" >"$WORK_FILE"
   curl -X POST $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" | jq --raw-output "$jq_transform" | column -s "|" -t -N "ID,STATE"
 }
 
@@ -185,10 +206,10 @@ emit_squash_merge_msg() {
   description=$(echo "$body" | jq --raw-output ".description")
   title=$(echo "$body" | jq --raw-output ".title")
   # Is - is nicer than *
-  squash_merge_details=$(echo "$description" | awk '/SQUASHMERGESTART/,/SQUASHMERGEEND/' \
-          | { grep -v "SQUASHMERGE" || test $? = 1; } \
-          | sed -E "s|^\*|-|")
-  pr_approvers=$(echo "$body" | jq --raw-output "$jq_approvers" )
+  squash_merge_details=$(echo "$description" | awk '/SQUASHMERGESTART/,/SQUASHMERGEEND/' |
+    { grep -v "SQUASHMERGE" || test $? = 1; } |
+    sed -E "s|^\*|-|")
+  pr_approvers=$(echo "$body" | jq --raw-output "$jq_approvers")
 
   local squash_merge_msg="$title (pull request #$pr_number)
 
