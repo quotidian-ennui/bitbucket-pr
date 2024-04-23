@@ -56,7 +56,11 @@ Usage: bb-pr [help|list|squash-msg|squash-merge|approve|unapprove|decline] [opti
   decline      : decline a PR
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
-Requires the PR number as its only parameter
+Without an argument, the pull request that belongs to the current branch
+is used.
+
+Arguments
+  <branch> The branch of PR URL to squash merge
 
 'list' can additionally filter by state
   -s : the state (e.g. -s OPEN) OPEN|MERGED|DECLINED|SUPERSEDED

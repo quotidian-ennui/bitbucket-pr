@@ -52,7 +52,7 @@ get_pr_number() {
   if [[ -z "$pr_number" && -n "${GIT_REMOTE_BRANCH}" ]]; then
     query=$(printf "source.branch.name=\"%s\" AND state=\"OPEN\"" "${GIT_REMOTE_BRANCH}")
     query_uri=$(printf %s "${query}" | jq -sRr @uri)
-    local pull_request_query_url="https://api.bitbucket.org/2.0/repositories/${BITBUCKET_SLUG}/pullrequests?q=${query_uri}"
+    local pull_request_query_url="${BITBUCKET_API_URL}/${BITBUCKET_SLUG}/pullrequests?q=${query_uri}"
     pr_number=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "${pull_request_query_url}" | jq .values[0].id)
     if [ "$pr_number" != "null" ]; then
       echo "$pr_number"
@@ -78,7 +78,11 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
   decline      : decline a PR
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
-Requires the PR number as its only parameter
+Without an argument, the pull request that belongs to the current branch
+is used.
+
+Arguments
+  <branch> The branch of PR URL to squash merge
 
 'list' can additionally filter by state
   -s : the state (e.g. -s OPEN) OPEN|MERGED|DECLINED|SUPERSEDED
