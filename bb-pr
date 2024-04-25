@@ -249,6 +249,7 @@ emit_squash_merge_msg() {
   local squash_merge_msg="$title (pull request #$pr_number)
 
 $squash_merge_details
+
 $pr_approvers
 "
   echo "$squash_merge_msg"
