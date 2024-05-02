@@ -34,7 +34,7 @@ trap cleanup 1 2 15
 clipboard_exe() {
   if [[ -z "$BB_PR_CLIPBOARD" ]]; then
     if [[ -n "$WSL_DISTRO_NAME" ]]; then
-      LOCAL_DRIVE_C=$(mount | grep "C:" | awk '{print $3}')
+      LOCAL_DRIVE_C=$(mount | grep "9p" | grep "C:" | awk '{print $3}')
       echo "$LOCAL_DRIVE_C/windows/system32/clip.exe"
     elif [[ -n "${XDG_CURRENT_DESKTOP}" ]]; then
       echo "xclip"
