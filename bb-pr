@@ -234,11 +234,11 @@ emit_squash_merge_msg() {
   local title
   local description
   local pr_number="$1"
-  local jq_approvers='.participants | .[] | select(.approved==true) | "Approved by: \(.user.display_name)"'
+  local jq_approvers='.participants | .[] | select(.approved==true) | "Approved-By: \(.user.display_name)"'
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
   body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
-  description=$(echo "$body" | jq --raw-output ".description")
+  description=$(echo "$body" | jq --raw-output '.description | gsub("\\\\"; "")')
   title=$(echo "$body" | jq --raw-output ".title")
   # Is - is nicer than *
   squash_merge_details=$(echo "$description" | awk '/SQUASHMERGESTART/,/SQUASHMERGEEND/' |
@@ -246,12 +246,24 @@ emit_squash_merge_msg() {
     sed -E "s|^\*|-|")
   pr_approvers=$(echo "$body" | jq --raw-output "$jq_approvers")
 
+  shopt -s extglob
+  squash_merge_details=${squash_merge_details%%*($'\n')} # remove all trailing newlines
+  squash_merge_details=${squash_merge_details##*($'\n')} # remove all leading newlines
+  shopt -u extglob
+
+  if [[ -n "$squash_merge_details" ]]; then
+    squash_merge_details="${squash_merge_details}"$'\n'$'\n' # add linebreaks to space out approver if set
+  fi
+
   local squash_merge_msg="$title (pull request #$pr_number)
 
-$squash_merge_details
+$squash_merge_details$pr_approvers"
 
-$pr_approvers
-"
+  shopt -s extglob
+  squash_merge_msg=${squash_merge_msg%%*($'\n')} # remove all trailing newlines
+  squash_merge_msg=${squash_merge_msg##*($'\n')} # remove all leading newlines
+  shopt -u extglob
+
   echo "$squash_merge_msg"
 }
 
