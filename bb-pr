@@ -18,7 +18,7 @@ GIT_REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/de
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current) || true
 GIT_REMOTE_DEFAULT=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5) || true
 
-ACTION_LIST="help|list|squash-msg|squash-merge|approve|unapprove|decline"
+ACTION_LIST="help|list|squash-msg|squash-merge|approve|unapprove|decline|close-branch"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
 CURL_AUTH="${BITBUCKET_USER}:${BITBUCKET_TOKEN}"
@@ -34,7 +34,7 @@ trap cleanup 1 2 15
 clipboard_exe() {
   if [[ -z "$BB_PR_CLIPBOARD" ]]; then
     if [[ -n "$WSL_DISTRO_NAME" ]]; then
-      LOCAL_DRIVE_C=$(mount | grep "9p" | grep "C:" | awk '{print $3}')
+      LOCAL_DRIVE_C=$(mount | grep "9p" | grep "path=C:" | awk '{print $3}')
       echo "$LOCAL_DRIVE_C/windows/system32/clip.exe"
     elif [[ -n "${XDG_CURRENT_DESKTOP}" ]]; then
       echo "xclip"
@@ -68,8 +68,7 @@ get_pr_number() {
 action_help() {
   cat <<EOF
 
-Simple tooling that helps management of bitbucket pull requests from
-the commandline
+Tool that helps management of bitbucket pull requests from the commandline
 
 Usage: $(basename "$0") [$ACTION_LIST] [options]
   help         : show this help
@@ -79,18 +78,44 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
   approve      : approve a PR (though should you from the CLI?)
   unapprove    : remove your approval
   decline      : decline a PR
+  close-branch : change the 'close_source_branch' field
 
-'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
+'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline' | 'close-branch'
 Without an argument, the pull request that belongs to the current branch
 is used.
 
 Arguments
-  <branch> The branch of PR URL to squash merge
+  <PR> The PR number to operate on.
+
+'close-branch' can toggle true or false (default true)
+  -c : true|false (e.g. -c false) to toggle the state
+
+'squash-merge' can do dangerous things
+  -D : force close the branch regardless of the PR setting. If not
+       specified then the PR will be merged according to the PR
+       settings.
 
 'list' can additionally filter by state
   -s : the state (e.g. -s OPEN) OPEN|MERGED|DECLINED|SUPERSEDED
        If you get it wrong, you'll get all the PRs which may take
        longer than you want. Defaults to 'OPEN'
+
+Examples
+If we are on the branch 'fix/owasp'
+
+# Squash Merge the PR associated with 'fix/owasp' and close (delete) the source branch
+# The local branch 'fix/owasp' is deleted and you will end up on the 'main' branch
+bsh ❯ bb-pr squash-merge -D
+
+# Squash Merge the PR associated with 'feat/owasp' according its PR settings
+# The local branch 'fix/owasp' is deleted and you will end up on the 'main' branch
+bsh ❯ bb-pr squash-merge
+
+# Squash Merge the PR#5 leaving you on the 'feat/owasp'
+bsh ❯ bb-pr squash-merge 5
+
+# Squash Merge the PR#5 deleting the source branch leaving you on the 'feat/owasp'
+bsh ❯ bb-pr squash-merge -D 5
 
 EOF
   exit 1
@@ -184,10 +209,27 @@ action_squash-msg() {
 action_squash-merge() {
   local squash_merge_msg
   local json_payload
-  local pr_number="$1"
   local jq_transform='"\(.id)|\(.state)"'
   local delete_local_branch=""
+  local force_close_branch=""
 
+  ARGS=$(getopt --options 'D' -- "${@}")
+  eval "set -- ${ARGS}"
+  while true; do
+    case "${1}" in
+    -D )
+      force_close_branch="true"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) action_help;;
+    esac
+  done
+
+  local pr_number="$1"
   # If there's no PR number then we assume we're branch based
   # and since we are squash merging we try to behave like gh squash-merge
   # and delete the local working branch
@@ -204,13 +246,18 @@ action_squash-merge() {
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/merge"
 
   squash_merge_msg=$(emit_squash_merge_msg "$pr_number")
+
   # https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
   # mentions a mandatory 'type' in the request body, but there's no docs
   # as to what the value should be; but we should be safe to
   # assume it's the 'type' that you get back when you grab the pullrequest
   # /repositories/{workspace}/{repo_slug}/pullrequests/{pull_request_id}
   # probably want some tempfile action for a bit of --data @filename
-  json_payload=$(jf '{%**q}' "type" "pullrequest" "message" "$squash_merge_msg" "merge_strategy" "squash")
+  if [[ -n "$force_close_branch" ]]; then
+    json_payload=$(jf '{%**q}' "type" "pullrequest" "message" "$squash_merge_msg" "close_source_branch" "true" "merge_strategy" "squash")
+  else
+    json_payload=$(jf '{%**q}' "type" "pullrequest" "message" "$squash_merge_msg" "merge_strategy" "squash")
+  fi
   echo "$json_payload" >"$WORK_FILE"
   curl -X POST $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" | jq --raw-output "$jq_transform" | column -s "|" -t -N "ID,STATE"
 
@@ -218,6 +265,32 @@ action_squash-merge() {
     git_switch_default
   fi
 }
+
+action_close-branch() {
+  close_branch="true"
+  ARGS=$(getopt --options 'c:' -- "${@}")
+  eval "set -- ${ARGS}"
+  while true; do
+    case "${1}" in
+    -c )
+      close_branch="${2}"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) action_help;;
+    esac
+  done
+  local pr_number="$1"
+  pr_number=$(get_pr_number "$pr_number")
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  json_payload=$(jf '{%**q}' "close_source_branch" "$close_branch")
+  echo "$json_payload" >"$WORK_FILE"
+  curl -X PUT $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" | jq --raw-output '"close_source_branch now \(.close_source_branch)"'
+}
+
 
 git_switch_default() {
   if [[ -n "$GIT_REMOTE_DEFAULT" && "$GIT_LOCAL_WORKING_BRANCH" ]]; then
