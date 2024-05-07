@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, edited]
 
 permissions: {}
 
@@ -39,6 +40,23 @@ jobs:
         with:
           args: --no-merge-commit
 
+  # Check the PR title conforms to 'conventional'
+  pr-title:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    if: |
+      github.event_name == 'pull_request'
+    steps:
+      - run: |
+          regexp="^(build|ci|docs|feat|fix|perf|refactor|style|test|chore|deps)(\(.+\))?: "
+          title="${{ github.event.pull_request.title }}"
+          if [[ ! $title =~ $regexp ]]; then
+            echo "PR Title is not 'conventional' matching $regexp" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
   typos:
     runs-on: ubuntu-latest
     permissions:
@@ -54,6 +72,7 @@ jobs:
       - shellcheck
       - committed
       - typos
+      - pr-title
     permissions:
       contents: write
       pull-requests: write

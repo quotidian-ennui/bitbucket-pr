@@ -40,13 +40,11 @@ export BITBUCKET_TOKEN=my_bitbucket_app_password
 
 - Check this repo out, and put it in the path.
 
-```bash
-bsh ❯ bb-pr
+```shell
 
-Simple tooling that helps management of bitbucket pull requests from
-the commandline
+Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: bb-pr [help|list|squash-msg|squash-merge|approve|unapprove|decline] [options]
+Usage: bb-pr [help|list|squash-msg|squash-merge|approve|unapprove|decline|close-branch] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   squash-msg   : copy a reasonable message to the clipboard for merging a PR
@@ -54,18 +52,44 @@ Usage: bb-pr [help|list|squash-msg|squash-merge|approve|unapprove|decline] [opti
   approve      : approve a PR (though should you from the CLI?)
   unapprove    : remove your approval
   decline      : decline a PR
+  close-branch : change the 'close_source_branch' field
 
-'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
+'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline' | 'close-branch'
 Without an argument, the pull request that belongs to the current branch
 is used.
 
 Arguments
-  <branch> The branch of PR URL to squash merge
+  <PR> The PR number to operate on.
+
+'close-branch' can toggle true or false (default true)
+  -c : true|false (e.g. -c false) to toggle the state
+
+'squash-merge' can do dangerous things
+  -D : force close the branch regardless of the PR setting. If not
+       specified then the PR will be merged according to the PR
+       settings.
 
 'list' can additionally filter by state
   -s : the state (e.g. -s OPEN) OPEN|MERGED|DECLINED|SUPERSEDED
        If you get it wrong, you'll get all the PRs which may take
        longer than you want. Defaults to 'OPEN'
+
+Examples
+If we are on the branch 'fix/owasp'
+
+# Squash Merge the PR associated with 'fix/owasp' and close (delete) the source branch
+# The local branch 'fix/owasp' is deleted and you will end up on the 'main' branch
+bsh ❯ bb-pr squash-merge
+
+# Squash Merge the PR associated with 'feat/owasp' according its PR settings
+# The local branch 'fix/owasp' is deleted and you will end up on the 'main' branch
+bsh ❯ bb-pr squash-merge -D
+
+# Squash Merge the PR#5 leaving you on the 'feat/owasp'
+bsh ❯ bb-pr squash-merge 5
+
+# Squash Merge the PR#5 deleting the source branch leaving you on the 'feat/owasp'
+bsh ❯ bb-pr squash-merge -D 5
 ```
 
 > We try to derive the correct application for inserting text into clipboard. You can override this using the environment variable `BB_PR_CLIPBOARD`. It's `clip.exe` on WSL2, `xclip` on non WSL linux, undefined for MINGW (wingit) and MacOS (though you should be able to use `pbcopy`). The testing environment is WSL2 (Ubuntu & Debian).
