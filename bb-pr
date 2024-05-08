@@ -18,7 +18,7 @@ GIT_REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/de
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current) || true
 GIT_REMOTE_DEFAULT=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5) || true
 
-ACTION_LIST="help|list|squash-msg|squash-merge|approve|unapprove|decline|close-branch"
+ACTION_LIST="help|list|checkout|squash-msg|squash-merge|approve|unapprove|decline|close-branch"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
 CURL_AUTH="${BITBUCKET_USER}:${BITBUCKET_TOKEN}"
@@ -73,6 +73,7 @@ Tool that helps management of bitbucket pull requests from the commandline
 Usage: $(basename "$0") [$ACTION_LIST] [options]
   help         : show this help
   list         : list (open) PRs in this repo
+  checkout     : check out a pull request in git
   squash-msg   : copy a reasonable message to the clipboard for merging a PR
   squash-merge : merge the PR using the message from 'squash-msg'
   approve      : approve a PR (though should you from the CLI?)
@@ -217,7 +218,7 @@ action_squash-merge() {
   eval "set -- ${ARGS}"
   while true; do
     case "${1}" in
-    -D )
+    -D)
       force_close_branch="true"
       shift
       ;;
@@ -225,7 +226,7 @@ action_squash-merge() {
       shift
       break
       ;;
-    *) action_help;;
+    *) action_help ;;
     esac
   done
 
@@ -272,7 +273,7 @@ action_close-branch() {
   eval "set -- ${ARGS}"
   while true; do
     case "${1}" in
-    -c )
+    -c)
       close_branch="${2}"
       shift 2
       ;;
@@ -280,7 +281,7 @@ action_close-branch() {
       shift
       break
       ;;
-    *) action_help;;
+    *) action_help ;;
     esac
   done
   local pr_number="$1"
@@ -291,6 +292,22 @@ action_close-branch() {
   curl -X PUT $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" | jq --raw-output '"close_source_branch now \(.close_source_branch)"'
 }
 
+action_checkout() {
+  local pr_number="$1"
+
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
+
+  branch=$(echo "$body" | jq --raw-output ".source.branch.name")
+
+  git fetch --all
+  git switch "$branch"
+}
 
 git_switch_default() {
   if [[ -n "$GIT_REMOTE_DEFAULT" && "$GIT_LOCAL_WORKING_BRANCH" ]]; then
