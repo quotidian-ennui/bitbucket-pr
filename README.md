@@ -44,9 +44,10 @@ export BITBUCKET_TOKEN=my_bitbucket_app_password
 
 Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: bb-pr [help|list|squash-msg|squash-merge|approve|unapprove|decline|close-branch] [options]
+Usage: bb-pr [help|list|checkout|squash-msg|squash-merge|approve|unapprove|decline|close-branch] [options]
   help         : show this help
   list         : list (open) PRs in this repo
+  checkout     : check out a pull request in git
   squash-msg   : copy a reasonable message to the clipboard for merging a PR
   squash-merge : merge the PR using the message from 'squash-msg'
   approve      : approve a PR (though should you from the CLI?)
