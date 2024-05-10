@@ -11,8 +11,16 @@
 
 set -eo pipefail
 
+_giturl_to_base () {
+  local url=$1
+  url=${url%%.git}
+  url=${url#*bitbucket*:}
+  url=${url#*bitbucket*/}
+  echo "$url"
+}
+
 BITBUCKET_API_URL="https://api.bitbucket.org/2.0/repositories"
-GIT_REMOTE=$(git remote get-url origin | cut -f2 -d':') || true
+GIT_REMOTE=$(_giturl_to_base "$(git remote get-url origin)") || true
 BITBUCKET_SLUG=${GIT_REMOTE%.git}
 GIT_REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null | cut -f2- -d'/') || true
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current) || true
