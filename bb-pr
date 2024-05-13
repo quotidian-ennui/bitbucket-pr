@@ -11,7 +11,7 @@
 
 set -eo pipefail
 
-_giturl_to_base () {
+_giturl_to_base() {
   local url=$1
   url=${url%%.git}
   url=${url#*bitbucket*:}
@@ -319,8 +319,9 @@ action_checkout() {
 
 git_switch_default() {
   if [[ -n "$GIT_REMOTE_DEFAULT" && "$GIT_LOCAL_WORKING_BRANCH" ]]; then
-    git checkout "$GIT_REMOTE_DEFAULT"
+    git switch "$GIT_REMOTE_DEFAULT"
     git pull
+    git remote prune origin
     git branch -D "$GIT_LOCAL_WORKING_BRANCH"
   fi
 }
