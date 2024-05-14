@@ -11,7 +11,7 @@
 
 set -eo pipefail
 
-_giturl_to_base () {
+_giturl_to_base() {
   local url=$1
   url=${url%%.git}
   url=${url#*bitbucket*:}
@@ -22,7 +22,8 @@ _giturl_to_base () {
 BITBUCKET_API_URL="https://api.bitbucket.org/2.0/repositories"
 GIT_REMOTE=$(_giturl_to_base "$(git remote get-url origin)") || true
 BITBUCKET_SLUG=${GIT_REMOTE%.git}
-GIT_REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null | cut -f2- -d'/') || true
+GIT_REMOTE_BRANCH_FULL=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null) || true
+GIT_REMOTE_BRANCH=${GIT_REMOTE_BRANCH_FULL#*/}
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current) || true
 GIT_REMOTE_DEFAULT=$(git remote show origin | grep 'HEAD branch' | cut -d' ' -f5) || true
 
@@ -319,9 +320,10 @@ action_checkout() {
 
 git_switch_default() {
   if [[ -n "$GIT_REMOTE_DEFAULT" && "$GIT_LOCAL_WORKING_BRANCH" ]]; then
-    git checkout "$GIT_REMOTE_DEFAULT"
+    git switch "$GIT_REMOTE_DEFAULT"
     git pull
-    git branch -D "$GIT_LOCAL_WORKING_BRANCH"
+    git branch --delete --force --remotes "$GIT_REMOTE_BRANCH_FULL"
+    git branch --delete --force "$GIT_LOCAL_WORKING_BRANCH"
   fi
 }
 
