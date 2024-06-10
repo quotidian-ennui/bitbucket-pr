@@ -77,7 +77,8 @@ jobs:
       contents: write
       pull-requests: read
     if: |
-      github.actor == 'dependabot[bot]'
+      github.actor == 'dependabot[bot]' &&
+      github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     name: PR Trigger
     steps:
