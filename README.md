@@ -40,11 +40,17 @@ export BITBUCKET_TOKEN=my_bitbucket_app_password
 
 - Check this repo out, and put it in the path.
 
+- For bash completion
+
+```shell
+eval "$(bb-pr completion)"
+```
+
 ```shell
 
 Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: bb-pr [help|list|checkout|squash-msg|squash-merge|approve|unapprove|decline|close-branch] [options]
+Usage: bb-pr [help|list|checkout|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   checkout     : check out a pull request in git
@@ -54,6 +60,7 @@ Usage: bb-pr [help|list|checkout|squash-msg|squash-merge|approve|unapprove|decli
   unapprove    : remove your approval
   decline      : decline a PR
   close-branch : change the 'close_source_branch' field
+  completion   : returns command bash completion
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline' | 'close-branch'
 Without an argument, the pull request that belongs to the current branch
