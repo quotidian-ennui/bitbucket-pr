@@ -36,7 +36,7 @@ CURL_HEADER_CTYPE="Content-Type: application/json"
 CURL_HEADER_ACCEPT="Accept: application/json"
 CURL_FLAGS="-fsSL"
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
+SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
 trap cleanup 1 2 15
 
