@@ -25,9 +25,9 @@ BITBUCKET_SLUG=${GIT_REMOTE%.git}
 GIT_REMOTE_BRANCH_FULL=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null) || true
 GIT_REMOTE_BRANCH=${GIT_REMOTE_BRANCH_FULL#*/}
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current 2>/dev/null) || true
-GIT_REMOTE_DEFAULT=$(git remote show origin 2>/dev/null| grep 'HEAD branch' | cut -d' ' -f5) || true
+GIT_REMOTE_DEFAULT=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5) || true
 
-ACTION_LIST="help|list|checkout|squash-msg|squash-merge|approve|unapprove|decline|close-branch"
+ACTION_LIST="help|list|checkout|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 SQUASH_MERGE_OUTPUT=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
@@ -35,6 +35,8 @@ CURL_AUTH="${BITBUCKET_USER}:${BITBUCKET_TOKEN}"
 CURL_HEADER_CTYPE="Content-Type: application/json"
 CURL_HEADER_ACCEPT="Accept: application/json"
 CURL_FLAGS="-fsSL"
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
 trap cleanup 1 2 15
 
@@ -93,6 +95,7 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
   unapprove    : remove your approval
   decline      : decline a PR
   close-branch : change the 'close_source_branch' field
+  completion   : returns command bash completion
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline' | 'close-branch'
 Without an argument, the pull request that belongs to the current branch
@@ -276,7 +279,7 @@ action_squash-merge() {
   fi
   echo "$json_payload" >"$WORK_FILE"
   http_code=$(curl -X POST -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
-  if [[ "$http_code" -ge "400" ]];  then
+  if [[ "$http_code" -ge "400" ]]; then
     #shellcheck disable=SC2002
     cat "${SQUASH_MERGE_OUTPUT}" | jq --raw-output "$failure_jq_transform" | column -s "|" -t -N "ID,STATE"
     echo Operation failed...
@@ -330,6 +333,10 @@ action_checkout() {
 
   git fetch --all
   git switch "$branch"
+}
+
+action_completion() {
+  cat "${SCRIPT_DIR}/completion.sh"
 }
 
 git_switch_default() {
