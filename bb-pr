@@ -390,7 +390,7 @@ $squash_merge_details$pr_approvers"
 
 ACTION=$1 || true
 ACTION=${ACTION:="help"}
-if [[ -z "$GIT_REMOTE" ]]; then
+if [[ -z "$GIT_REMOTE" && "$ACTION" != "completion" ]]; then
   ACTION="help"
 fi
 
