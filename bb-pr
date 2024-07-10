@@ -281,7 +281,12 @@ action_squash-merge() {
   http_code=$(curl -X POST -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
   if [[ "$http_code" -ge "400" ]]; then
     #shellcheck disable=SC2002
-    cat "${SQUASH_MERGE_OUTPUT}" | jq --raw-output "$failure_jq_transform" | column -s "|" -t -N "ID,STATE"
+    errorMsg=$(cat "${SQUASH_MERGE_OUTPUT}" | jq --raw-output "$failure_jq_transform" | column -s "|" -t -N "ID,STATE")
+    if [[ "$errorMsg" != "" ]]; then
+      echo -e "$errorMsg"
+    else
+      cat "${SQUASH_MERGE_OUTPUT}"
+    fi
     echo Operation failed...
     exit 1
   else
