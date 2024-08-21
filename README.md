@@ -50,10 +50,11 @@ eval "$(bb-pr completion)"
 
 Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: bb-pr [help|list|checkout|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion] [options]
+Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   checkout     : check out a pull request in git
+  co           : alias for checkout
   squash-msg   : copy a reasonable message to the clipboard for merging a PR
   squash-merge : merge the PR using the message from 'squash-msg'
   approve      : approve a PR (though should you from the CLI?)

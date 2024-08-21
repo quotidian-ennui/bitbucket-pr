@@ -27,7 +27,7 @@ GIT_REMOTE_BRANCH=${GIT_REMOTE_BRANCH_FULL#*/}
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current 2>/dev/null) || true
 GIT_REMOTE_DEFAULT=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5) || true
 
-ACTION_LIST="help|list|checkout|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion"
+ACTION_LIST="help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 SQUASH_MERGE_OUTPUT=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
@@ -89,6 +89,7 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   checkout     : check out a pull request in git
+  co           : alias for checkout
   squash-msg   : copy a reasonable message to the clipboard for merging a PR
   squash-merge : merge the PR using the message from 'squash-msg'
   approve      : approve a PR (though should you from the CLI?)
@@ -338,6 +339,10 @@ action_checkout() {
 
   git fetch --all
   git switch "$branch"
+}
+
+action_co() {
+  action_checkout "$@"
 }
 
 action_completion() {
