@@ -24,6 +24,11 @@ This is that and also replicates some functionality like `gh pr list`.
 <!-- SQUASHMERGESTART -->
 
 <!-- SQUASHMERGEEND -->
+
+<!-- put conventional commit footers here (see https://git-scm.com/docs/git-interpret-trailers for style) -->
+<!-- SQUASHMERGEFOOTERSTART -->
+Ref:
+<!-- SQUASHMERGEFOOTEREND -->
 ```
 
 > This isn't the same as the markers for `gh-squash-merge` because Atlassian doesn't _hide HTML comments_ and it escapes the underscores to avoid CommonMark highlighting. What's illuminating is that when you create a pull request you are subjected to the rich text editor, but edit it later gives you the markdown editor. Nevertheless, people will see your HTML comments, and there's nothing much that can be done to avoid that.

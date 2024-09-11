@@ -375,7 +375,9 @@ emit_squash_merge_msg() {
   squash_merge_details=$(echo "$description" | awk '/SQUASHMERGESTART/,/SQUASHMERGEEND/' |
     { grep -v "SQUASHMERGE" || test $? = 1; } |
     sed -E "s|^\*|-|")
-  pr_approvers=$(echo "$body" | jq --raw-output "$jq_approvers")
+  squash_merge_footer=$(echo "$description" | awk '/SQUASHMERGEFOOTERSTART/,/SQUASHMERGEFOOTEREND/' |
+    { grep -v "SQUASHMERGEFOOTER" || test $? = 1; } | tr -s '\n' '\n')
+  pr_approvers=$(echo "$body" | jq --raw-output "$jq_approvers" | tr -s '\n' '\n')
 
   shopt -s extglob
   squash_merge_details=${squash_merge_details%%*($'\n')} # remove all trailing newlines
@@ -383,14 +385,18 @@ emit_squash_merge_msg() {
   shopt -u extglob
 
   squash_merge_details=$(echo "${squash_merge_details}" | sed -E 's/\[(.*?)\]\(.*?\)/\1/g') # remove markdown links
+  squash_merge_footer=$(echo "${squash_merge_footer}" | sed -E 's/\[(.*?)\]\(.*?\)/\1/g') # remove markdown links
 
   if [[ -n "$squash_merge_details" ]]; then
     squash_merge_details="${squash_merge_details}"$'\n'$'\n' # add linebreaks to space out approver if set
   fi
+  if [[ -n "$squash_merge_footer" ]]; then
+    squash_merge_footer="${squash_merge_footer}"$'\n' # add linebreaks to space out approver if set
+  fi
 
   local squash_merge_msg="$title (pull request #$pr_number)
 
-$squash_merge_details$pr_approvers"
+$squash_merge_details$squash_merge_footer$pr_approvers"
 
   shopt -s extglob
   squash_merge_msg=${squash_merge_msg%%*($'\n')} # remove all trailing newlines
