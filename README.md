@@ -2,7 +2,7 @@
 
 I realise that I've been quite spoilt by the github cli.
 
-I'd like some way of replicating [gh-squash-merge](https://github.com/quotidian/gh-squash-merge) when playing around with bitbucket PRs.
+I'd like some way of replicating [gh-squash-merge](https://github.com/quotidian-ennui/gh-squash-merge) when playing around with bitbucket PRs.
 
 This is that and also replicates some functionality like `gh pr list`.
 
@@ -93,11 +93,11 @@ If we are on the branch 'fix/owasp'
 
 # Squash Merge the PR associated with 'fix/owasp' and close (delete) the source branch
 # The local branch 'fix/owasp' is deleted and you will end up on the 'main' branch
-bsh ❯ bb-pr squash-merge
+bsh ❯ bb-pr squash-merge -D
 
 # Squash Merge the PR associated with 'feat/owasp' according its PR settings
 # The local branch 'fix/owasp' is deleted and you will end up on the 'main' branch
-bsh ❯ bb-pr squash-merge -D
+bsh ❯ bb-pr squash-merge
 
 # Squash Merge the PR#5 leaving you on the 'feat/owasp'
 bsh ❯ bb-pr squash-merge 5
