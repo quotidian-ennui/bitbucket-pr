@@ -2,7 +2,7 @@
 
 I realise that I've been quite spoilt by the github cli.
 
-I'd like some way of replicating [gh-squash-merge](https://github.com/quotidian/gh-squash-merge) when playing around with bitbucket PRs.
+I'd like some way of replicating [gh-squash-merge](https://github.com/quotidian-ennui/gh-squash-merge) when playing around with bitbucket PRs.
 
 This is that and also replicates some functionality like `gh pr list`.
 
@@ -24,6 +24,11 @@ This is that and also replicates some functionality like `gh pr list`.
 <!-- SQUASHMERGESTART -->
 
 <!-- SQUASHMERGEEND -->
+
+<!-- put conventional commit footers here (see https://git-scm.com/docs/git-interpret-trailers for style) -->
+<!-- SQUASHMERGEFOOTERSTART -->
+Ref:
+<!-- SQUASHMERGEFOOTEREND -->
 ```
 
 > This isn't the same as the markers for `gh-squash-merge` because Atlassian doesn't _hide HTML comments_ and it escapes the underscores to avoid CommonMark highlighting. What's illuminating is that when you create a pull request you are subjected to the rich text editor, but edit it later gives you the markdown editor. Nevertheless, people will see your HTML comments, and there's nothing much that can be done to avoid that.
@@ -88,11 +93,11 @@ If we are on the branch 'fix/owasp'
 
 # Squash Merge the PR associated with 'fix/owasp' and close (delete) the source branch
 # The local branch 'fix/owasp' is deleted and you will end up on the 'main' branch
-bsh ❯ bb-pr squash-merge
+bsh ❯ bb-pr squash-merge -D
 
 # Squash Merge the PR associated with 'feat/owasp' according its PR settings
 # The local branch 'fix/owasp' is deleted and you will end up on the 'main' branch
-bsh ❯ bb-pr squash-merge -D
+bsh ❯ bb-pr squash-merge
 
 # Squash Merge the PR#5 leaving you on the 'feat/owasp'
 bsh ❯ bb-pr squash-merge 5
