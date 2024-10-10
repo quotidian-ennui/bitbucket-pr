@@ -52,10 +52,11 @@ eval "$(bb-pr completion)"
 ```
 
 ```shell
+bsh ❯ bb-pr
 
 Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion] [options]
+Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   checkout     : check out a pull request in git
@@ -67,8 +68,11 @@ Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|de
   decline      : decline a PR
   close-branch : change the 'close_source_branch' field
   completion   : returns command bash completion
+  status       : shows the overall status of the requested PR
 
-'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline' | 'close-branch'
+'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
+'close-branch' | 'status'
+
 Without an argument, the pull request that belongs to the current branch
 is used.
 
