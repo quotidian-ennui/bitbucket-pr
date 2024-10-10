@@ -12,12 +12,17 @@
 set -eo pipefail
 
 declare -A emojiMap
+# build status
 emojiMap[SUCCESSFUL]="✅"
 emojiMap[FAILED]="⛔"
 emojiMap[INPROGRESS]="⌚"
-emojiMap[true]="👍"
+emojiMap[STOPPED]="❌"
+# participant.state (approval)
 emojiMap[approved]="👍"
 emojiMap[changes_requested]="✒️"
+emojiMap[null]="👀"
+# participant.approved (true|false)
+emojiMap[true]="👍"
 emojiMap[false]="👀"
 
 _giturl_to_base() {
@@ -398,7 +403,7 @@ __status_approvals() {
   local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
   approvalList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" \
-    | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "approved": .approved }')
+    | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "approved": .state}')
   if [[ -n "$approvalList" ]]; then
     while IFS= read -r line; do
       name=$(echo "$line" | jq -r '.name')
