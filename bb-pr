@@ -11,6 +11,20 @@
 
 set -eo pipefail
 
+declare -A emojiMap
+# build status
+emojiMap[SUCCESSFUL]="✅"
+emojiMap[FAILED]="⛔"
+emojiMap[INPROGRESS]="⌚"
+emojiMap[STOPPED]="❌"
+# participant.state (approval)
+emojiMap[approved]="👍"
+emojiMap[changes_requested]="✒️"
+emojiMap[null]="👀"
+# participant.approved (true|false)
+emojiMap[true]="👍"
+emojiMap[false]="👀"
+
 _giturl_to_base() {
   local url=$1
   url=${url%%.git}
@@ -27,7 +41,7 @@ GIT_REMOTE_BRANCH=${GIT_REMOTE_BRANCH_FULL#*/}
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current 2>/dev/null) || true
 GIT_REMOTE_DEFAULT=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5) || true
 
-ACTION_LIST="help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion"
+ACTION_LIST="help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 SQUASH_MERGE_OUTPUT=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
@@ -39,6 +53,15 @@ CURL_FLAGS="-fsSL"
 SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
 trap cleanup 1 2 15
+
+emoji() {
+  local key=$1
+  for mapEntry in "${!emojiMap[@]}"
+  do
+    [[ "$key" == "$mapEntry" ]] && echo "${emojiMap[${key}]}" && return
+  done
+  echo "$key"
+}
 
 # Need to get someone to let me test on a mac.
 # Macs can use pbcopy apparently, but they should just
@@ -97,8 +120,11 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
   decline      : decline a PR
   close-branch : change the 'close_source_branch' field
   completion   : returns command bash completion
+  status       : shows the overall status of the requested PR
 
-'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline' | 'close-branch'
+'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
+'close-branch' | 'status'
+
 Without an argument, the pull request that belongs to the current branch
 is used.
 
@@ -348,6 +374,69 @@ action_co() {
 action_completion() {
   cat "${SCRIPT_DIR}/completion.sh"
 }
+
+# If we wanted to replicate the merge checks view in the UI we would
+# have to manually do https://jira.atlassian.com/browse/BCLOUD-22014
+# build-status we are doing
+action_status() {
+  local pr_number=$1
+  local name
+  local status
+  local statusUrl
+  local approvalList
+  local buildStatusList
+
+  pr_number=$(get_pr_number "$pr_number")
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+  __status_builds "$pr_number"
+  __status_approvals "$pr_number"
+}
+
+__status_approvals() {
+  local pr_number=$1
+  local name
+  local status
+  local approvalList
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+
+  approvalList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" \
+    | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "approved": .state}')
+  if [[ -n "$approvalList" ]]; then
+    while IFS= read -r line; do
+      name=$(echo "$line" | jq -r '.name')
+      status=$(emoji "$(echo "$line" | jq -r '.approved')")
+      echo "$name|$status"
+    done <<<"$approvalList" | column -s"|" -t  -N "NAME,APPROVED"
+    echo ""
+  else
+    echo -e ">>> No REVIEWERS added to this PR ($pr_number)\n"
+  fi
+}
+
+__status_builds() {
+  local pr_number=$1
+  local name
+  local status
+  local statusUrl
+  local buildStatusList
+
+  local build_status_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/statuses"
+  buildStatusList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" \
+    | jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
+  if [[ -n "$buildStatusList" ]]; then
+    while IFS= read -r line; do
+      name=$(echo "$line" | jq -r '.name')
+      status=$(emoji "$(echo "$line" | jq -r '.state')")
+      statusUrl=$(echo "$line" | jq -r '.url')
+      echo "$status|$name|$statusUrl"
+    done <<<"$buildStatusList" | column -s"|" -t  -N "STATUS,JOB,URL"
+    echo ""
+  fi
+}
+
 
 git_switch_default() {
   if [[ -n "$GIT_REMOTE_DEFAULT" && "$GIT_LOCAL_WORKING_BRANCH" ]]; then
