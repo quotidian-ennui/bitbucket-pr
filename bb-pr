@@ -228,6 +228,7 @@ action_status() {
   local pr_number=$1
   local name
   local status
+  local statusUrl
   local approvalList
   local buildStatusList
 
@@ -242,13 +243,14 @@ action_status() {
   approvalList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" \
     | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "approved": .approved }')
   buildStatusList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" \
-    | jq -r -c '.values[] | { "name" : .name, "state" : .state }')
+    | jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
   if [[ -n "$buildStatusList" ]]; then
     while IFS= read -r line; do
       name=$(echo "$line" | jq -r '.name')
       status=$(echo "$line" | jq -r '.state')
-      echo "$status|$name"
-    done <<<"$buildStatusList" | column -s"|" -t  -N "STATUS,JOB"
+      statusUrl=$(echo "$line" | jq -r '.url')
+      echo "$status|$name|$statusUrl"
+    done <<<"$buildStatusList" | column -s"|" -t  -N "STATUS,JOB,URL"
     echo ""
   fi
   if [[ -n "$approvalList" ]]; then
@@ -257,8 +259,9 @@ action_status() {
       status=$(echo "$line" | jq -r '.approved')
       echo "$name|$status"
     done <<<"$approvalList" | column -s"|" -t  -N "NAME,APPROVED"
+    echo ""
   else
-    echo ">>> No REVIEWERS on this PR ($pr_number)"
+    echo -e ">>> No REVIEWERS added to this PR ($pr_number)\n"
   fi
 }
 
