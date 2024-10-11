@@ -391,8 +391,11 @@ action_status() {
     echo ">>> No PR"
     exit 1
   fi
+  echo -e ">>> PR#$pr_number: $BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number\n"
   __status_builds "$pr_number"
   __status_approvals "$pr_number"
+  echo -e ">>> PR commit message:\n"
+  emit_squash_merge_msg "$pr_number"
 }
 
 __status_approvals() {
@@ -412,7 +415,7 @@ __status_approvals() {
     done <<<"$approvalList" | column -s"|" -t  -N "NAME,APPROVED"
     echo ""
   else
-    echo -e ">>> No REVIEWERS added to this PR ($pr_number)\n"
+    echo -e ">>> No REVIEWERS added to this PR\n"
   fi
 }
 
