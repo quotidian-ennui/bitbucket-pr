@@ -391,11 +391,20 @@ action_status() {
     echo ">>> No PR"
     exit 1
   fi
-  echo -e ">>> PR#$pr_number: $BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number\n"
+  __status_header "$pr_number"
   __status_builds "$pr_number"
   __status_approvals "$pr_number"
   echo -e ">>> PR commit message:\n"
   emit_squash_merge_msg "$pr_number"
+}
+
+__status_header() {
+  local pr_number=$1
+
+  local pull_request_url="$BITBUCKET_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
+  html_url=$(echo "$body" | jq -r '.links.html.href')
+  echo -e ">>> PR#$pr_number: $html_url\n"
 }
 
 __status_approvals() {
