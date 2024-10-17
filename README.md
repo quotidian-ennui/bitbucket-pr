@@ -37,6 +37,7 @@ Ref:
 - You will already have the standard tooling like `curl` | `tr` etc.
 - You need to define some environment variables to control your access to bitbucket (c.f. use [app-passwords](https://support.atlassian.com/bitbucket-cloud/docs/app-passwords/))
   - Remember to give yourself write access to pull requests.
+- If you don't like emojis (or they don't display in your terminal): `export BB_PR_DISABLE_EMOJIS=true`
 
 ```bash
 export BITBUCKET_USER=my_bitbucket_username
