@@ -33,7 +33,7 @@ Ref:
 
 > This isn't the same as the markers for `gh-squash-merge` because Atlassian doesn't _hide HTML comments_ and it escapes the underscores to avoid CommonMark highlighting. What's illuminating is that when you create a pull request you are subjected to the rich text editor, but edit it later gives you the markdown editor. Nevertheless, people will see your HTML comments, and there's nothing much that can be done to avoid that.
 
-- You need to install [yq](http://github.com/mikefarah/yq), [jq](https://github.com/jqlang/jq) & [jf](https://github.com/sayanarijit/jf).
+- You need to install [yq](https://github.com/mikefarah/yq), [jq](https://github.com/jqlang/jq) & [jf](https://github.com/sayanarijit/jf).
 - You will already have the standard tooling like `curl` | `tr` | `column` etc.
 - You need to define some environment variables to control your access to bitbucket (c.f. use [app-passwords](https://support.atlassian.com/bitbucket-cloud/docs/app-passwords/))
   - Remember to give yourself write access to pull requests.
