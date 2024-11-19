@@ -123,7 +123,8 @@ bsh ❯ bb-pr squash-merge -D 5
 
 - `whoami` and `ready` require the __account read__ scope for your app password and they can be used to add reviewers to a PR you have authored.
 - Create a file `.bitbucket/bitbucket-pr.yml` that contains the following (swap out the values for names/uuid to be something useful)
-  - You can of course figure out your own UUID by using `bb-pr whoami` or each approvers UUID will be shown when you execute `bb-pr status`
+  - This file can be overridden by the environment variable `BITBUCKET_REVIEWERS`
+- You can figure out your own UUID by using `bb-pr whoami` or each approvers UUID will be shown when you execute `bb-pr status`
 
 ```yaml
 reviewers:

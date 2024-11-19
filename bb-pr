@@ -36,6 +36,7 @@ _giturl_to_base() {
 EMOJIS_DISABLED=${BB_PR_DISABLE_EMOJIS:-false}
 BITBUCKET_API_BASE="https://api.bitbucket.org/2.0"
 BITBUCKET_REPO_API_URL="$BITBUCKET_API_BASE/repositories"
+GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 GIT_REMOTE=$(_giturl_to_base "$(git remote get-url origin 2>/dev/null)") || true
 BITBUCKET_SLUG=${GIT_REMOTE%.git}
 GIT_REMOTE_BRANCH_FULL=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null) || true
@@ -432,7 +433,7 @@ walk (if type == "object" and .uuid == $uuid then empty else . end)'
   fi
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
   login_uuid=$(action_whoami | jq -r '.uuid')
-  reviewers_file="$(git rev-parse --show-toplevel)/.bitbucket/bitbucket-pr.yml"
+  reviewers_file="${BITBUCKET_REVIEWERS:-${GIT_ROOT:-.}/.bitbucket/bitbucket-pr.yml}"
   if [[ ! -s "$reviewers_file" ]]; then
     echo -e "\n>>> Didn't find $reviewers_file; nothing to do;"
     exit 0
