@@ -120,8 +120,8 @@ bsh ❯ bb-pr squash-merge -D 5
 
 ## Bonus PR Review Behaviour
 
-- `whoami` requires the __account read__ scope for your app password.
-- `ready` allows you to add reviewers to a PR.
+- `whoami` requires the __account read__ scope attached to your app password.
+- `ready` allows you to add reviewers to a PR based on a configuration file.
   - note that this will remove the PR Author from the list of reviewers of the PR.
   - If you are the author and you are listed in the `bitbucket-pr.yml` file, then you will be discarded as a reviewer
   - It is a 'PUT' operation which means it follows whatever semantics Bitbucket cloud chooses to follow around that (it's not clear from the docs if this would be a clobbering overwrite, or an additive operation).
