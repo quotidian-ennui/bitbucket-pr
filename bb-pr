@@ -36,13 +36,14 @@ _giturl_to_base() {
 EMOJIS_DISABLED=${BB_PR_DISABLE_EMOJIS:-false}
 BITBUCKET_API_BASE="https://api.bitbucket.org/2.0"
 BITBUCKET_REPO_API_URL="$BITBUCKET_API_BASE/repositories"
+GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 GIT_REMOTE=$(_giturl_to_base "$(git remote get-url origin 2>/dev/null)") || true
 BITBUCKET_SLUG=${GIT_REMOTE%.git}
 GIT_REMOTE_BRANCH_FULL=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null) || true
 GIT_REMOTE_BRANCH=${GIT_REMOTE_BRANCH_FULL#*/}
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current 2>/dev/null) || true
 GIT_REMOTE_DEFAULT=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5) || true
-ACTION_LIST="help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami"
+ACTION_LIST="help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami|ready"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 SQUASH_MERGE_OUTPUT=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
@@ -125,10 +126,15 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
   completion   : returns command bash completion
   status       : shows the overall status of the requested PR
   whoami       : shows some information about your current user
-                 requires 'account read' scope
+                 - requires 'account read' scope
+  ready        : mark a PR as ready for review, which means that
+                 .bitbucket/bitbucket-pr.yml is parsed and the
+                 uuids are added as reviewers.
+                 - requires 'account read' scope since it has to
+                   figure out your uuid to "remove it"
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
-'close-branch' | 'status'
+'close-branch' | 'status' | 'ready'
 
 Without an argument, the pull request that belongs to the current branch is used.
 
@@ -402,9 +408,54 @@ action_status() {
   emit_squash_merge_msg "$pr_number"
 }
 
+
 action_whoami() {
   curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$BITBUCKET_API_BASE/user" | jq 'del (.links)'
 }
+
+# Use bb-pr whoami to find your UUID.
+#
+action_ready() {
+  local pr_number=$1
+  #shellcheck disable=SC2016
+  local jq_reviewers='
+walk(if type == "object" and has("name") then del(.name) else . end) |
+walk (if type == "object" and .uuid == $uuid then empty else . end)'
+  local reviewers_file
+  local pr_body
+  local login_uuid
+  local http_code
+
+  pr_number=$(get_pr_number "$pr_number")
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  login_uuid=$(action_whoami | jq -r '.uuid')
+  reviewers_file="${BITBUCKET_REVIEWERS:-${GIT_ROOT:-.}/.bitbucket/bitbucket-pr.yml}"
+  if [[ ! -s "$reviewers_file" ]]; then
+    echo -e "\n>>> Didn't find $reviewers_file; nothing to do;"
+    exit 0
+  fi
+  #shellcheck disable=SC2002
+  pr_body="$(cat "$reviewers_file" | yq -p yaml -o json | jq -r --arg uuid "$login_uuid" "$jq_reviewers")"
+  http_code=$(curl -X PUT -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
+  if [[ "$http_code" -ge "400" ]]; then
+    errorMsg=$(jq --raw-output '.error.message' <<<"$SQUASH_MERGE_OUTPUT")
+    if [[ "$errorMsg" != "" ]]; then
+      echo -e "$errorMsg"
+    else
+      cat "${SQUASH_MERGE_OUTPUT}"
+    fi
+    echo Operation failed...
+    exit 1
+  else
+    jq --raw-output '"Added reviewer: \(.reviewers | .[] | .display_name)"' <<<"$SQUASH_MERGE_OUTPUT"
+  fi
+
+}
+
 
 __status_header() {
   local pr_number=$1
@@ -419,17 +470,19 @@ __status_approvals() {
   local pr_number=$1
   local name
   local status
+  local uuid
   local approvalList
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
   approvalList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" \
-    | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "approved": .state}')
+    | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "uuid": .user.uuid, "approved": .state}')
   if [[ -n "$approvalList" ]]; then
     while IFS= read -r line; do
       name=$(echo "$line" | jq -r '.name')
       status=$(emoji "$(echo "$line" | jq -r '.approved')")
-      echo "$name|$status"
-    done <<<"$approvalList" | column -s"|" -t  -N "NAME,APPROVED"
+      uuid=$(echo "$line" | jq -r '.uuid')
+      echo "$name|$status|$uuid"
+    done <<<"$approvalList" | column -s"|" -t  -N "NAME,APPROVED,UUID"
     echo ""
   else
     echo -e ">>> No REVIEWERS added to this PR\n"
