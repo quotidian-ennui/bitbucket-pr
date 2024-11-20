@@ -130,8 +130,8 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
   ready        : mark a PR as ready for review, which means that
                  .bitbucket/bitbucket-pr.yml is parsed and the
                  uuids are added as reviewers.
-                 - requires 'account read' scope since it has to
-                   figure out your uuid to "remove it"
+                 - The PR author will be removed from the potential
+                   list of reviewers.
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
 'close-branch' | 'status' | 'ready'
@@ -433,12 +433,12 @@ walk (if type == "object" and .uuid == $uuid then empty else . end)'
     exit 1
   fi
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
-  login_uuid=$(action_whoami | jq -r '.uuid')
   reviewers_file="${BITBUCKET_REVIEWERS:-${GIT_ROOT:-.}/.bitbucket/bitbucket-pr.yml}"
   if [[ ! -s "$reviewers_file" ]]; then
     echo -e "\n>>> Didn't find $reviewers_file; nothing to do;"
     exit 0
   fi
+  login_uuid=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '.author.uuid')
   pr_body="$(cat "$reviewers_file" | yq -p yaml -o json | jq -r --arg uuid "$login_uuid" "$jq_reviewers")"
   http_code=$(curl -X PUT -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
   if [[ "$http_code" -ge "400" ]]; then
@@ -455,7 +455,6 @@ walk (if type == "object" and .uuid == $uuid then empty else . end)'
   fi
 
 }
-
 
 __status_header() {
   local pr_number=$1
