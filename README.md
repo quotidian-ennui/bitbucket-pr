@@ -53,7 +53,6 @@ eval "$(bb-pr completion)"
 ```
 
 ```console
-bsh ❯ bb-pr
 
 Tool that helps management of bitbucket pull requests from the commandline
 
@@ -75,8 +74,8 @@ Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|de
   ready        : mark a PR as ready for review, which means that
                  .bitbucket/bitbucket-pr.yml is parsed and the
                  uuids are added as reviewers.
-                 - requires 'account read' scope since it has to
-                   figure out your uuid to "remove it"
+                 - The PR author will be removed from the potential
+                   list of reviewers.
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
 'close-branch' | 'status' | 'ready'
@@ -121,7 +120,11 @@ bsh ❯ bb-pr squash-merge -D 5
 
 ## Bonus PR Review Behaviour
 
-- `whoami` and `ready` require the __account read__ scope for your app password and they can be used to add reviewers to a PR you have authored.
+- `whoami` requires the __account read__ scope attached to your app password.
+- `ready` allows you to add reviewers to a PR based on a configuration file.
+  - note that this will remove the PR Author from the list of reviewers of the PR.
+  - If you are the author and you are listed in the `bitbucket-pr.yml` file, then you will be discarded as a reviewer
+  - It is a 'PUT' operation which means it follows whatever semantics Bitbucket cloud chooses to follow around that (it's not clear from the docs if this would be a clobbering overwrite, or an additive operation).
 - Create a file `.bitbucket/bitbucket-pr.yml` that contains the following (swap out the values for names/uuid to be something useful)
   - This file can be overridden by the environment variable `BITBUCKET_REVIEWERS`
 - You can figure out your own UUID by using `bb-pr whoami` or each approvers UUID will be shown when you execute `bb-pr status`
@@ -138,6 +141,4 @@ reviewers:
     uuid: "{78ac559e-802b-4c2d-adcc-5e916eee0b78}"
 ```
 
-> note that `ready` will use `whoami` to figure out your uuid so that it is removed from the list of reviewers of the PR.
-
-- use `bb-pr ready` to set the named reviewers on the PR;
+- use `bb-pr ready` to set/add the named reviewers to the PR.
