@@ -458,11 +458,17 @@ walk (if type == "object" and .uuid == $uuid then empty else . end)'
 
 __status_header() {
   local pr_number=$1
-
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+
   body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
   html_url=$(echo "$body" | jq -r '.links.html.href')
+  branch_name=$(echo "$body" | jq -r '.source.branch.name')
+  behind=$(git rev-list --left-right --count origin/"$GIT_REMOTE_DEFAULT"...origin/"$branch_name" | cut -f1)
+
   echo -e ">>> PR#$pr_number: $html_url\n"
+  if [[ "$behind" -gt "0" ]]; then
+    echo -e ">>> This PR is behind $GIT_REMOTE_DEFAULT by $behind commits; potentially unmergeable\n"
+  fi
 }
 
 __status_approvals() {
