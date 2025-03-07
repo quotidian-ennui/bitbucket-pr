@@ -463,10 +463,10 @@ __status_header() {
   body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
   html_url=$(echo "$body" | jq -r '.links.html.href')
   branch_name=$(echo "$body" | jq -r '.source.branch.name')
-  behind=$(git rev-list --left-right --count origin/"$GIT_REMOTE_DEFAULT"...origin/"$branch_name" | cut -f1)
+  behind=$(git rev-list --left-right --count origin/"$GIT_REMOTE_DEFAULT"...origin/"$branch_name" 2>/dev/null | cut -f1 || true)
 
   echo -e ">>> PR#$pr_number: $html_url\n"
-  if [[ "$behind" -gt "0" ]]; then
+  if [[ "$behind" != "" && "$behind" -gt "0" ]]; then
     echo -e ">>> This PR is behind $GIT_REMOTE_DEFAULT by $behind commits; potentially unmergeable\n"
   fi
 }
