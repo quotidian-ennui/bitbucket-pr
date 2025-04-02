@@ -43,7 +43,7 @@ GIT_REMOTE_BRANCH_FULL=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 
 GIT_REMOTE_BRANCH=${GIT_REMOTE_BRANCH_FULL#*/}
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current 2>/dev/null) || true
 GIT_REMOTE_DEFAULT=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5) || true
-ACTION_LIST="help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami|ready"
+ACTION_LIST="help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami|ready|draft"
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 SQUASH_MERGE_OUTPUT=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
@@ -132,6 +132,8 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
                  uuids are added as reviewers.
                  - The PR author will be removed from the potential
                    list of reviewers.
+                 - This will change the PR from draft to ready
+  draft        : Remove all the reviewers and mark as draft
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
 'close-branch' | 'status' | 'ready'
@@ -413,7 +415,37 @@ action_whoami() {
   curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$BITBUCKET_API_BASE/user" | jq 'del (.links)'
 }
 
-# Use bb-pr whoami to find your UUID.
+# Make a PR draft.
+#shellcheck disable=SC2002
+action_draft() {
+  local pr_number=$1
+  pr_number=$(get_pr_number "$pr_number")
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  local pr_body='
+{
+  "draft": true,
+  "reviewers": []
+}'
+  http_code=$(curl -X PUT -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
+  if [[ "$http_code" -ge "400" ]]; then
+    errorMsg=$(cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '.error.message')
+    if [[ "$errorMsg" != "" ]]; then
+      echo -e "$errorMsg"
+    else
+      cat "${SQUASH_MERGE_OUTPUT}"
+    fi
+    echo Operation failed...
+    exit 1
+  else
+    cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '"Draft Mode: \(.draft)"'
+  fi
+}
+
+# Finds your UUID from .author.uuid in the PR.
 #
 #shellcheck disable=SC2002
 action_ready() {
@@ -421,7 +453,8 @@ action_ready() {
   #shellcheck disable=SC2016
   local jq_reviewers='
 walk(if type == "object" and has("name") then del(.name) else . end) |
-walk (if type == "object" and .uuid == $uuid then empty else . end)'
+walk (if type == "object" and .uuid == $uuid then empty else . end) |
+. += { "draft": false }'
   local reviewers_file
   local pr_body
   local login_uuid
