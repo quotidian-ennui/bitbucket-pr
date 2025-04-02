@@ -55,13 +55,16 @@ _bb-pr() {
     bb-pr,ready)
       cmd="bb-pr__ready"
       ;;
+    bb-pr,draft)
+      cmd="bb-pr__draft"
+      ;;
     *) ;;
     esac
   done
 
   case "${cmd}" in
   bb-pr)
-    opts="approve checkout close-branch co completion decline help list ready squash-merge squash-msg status unapprove whoami"
+    opts="approve checkout close-branch co completion decline help list ready squash-merge squash-msg status unapprove whoami draft"
     if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
       mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
       return 0

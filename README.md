@@ -56,7 +56,7 @@ eval "$(bb-pr completion)"
 
 Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami|ready] [options]
+Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami|ready|draft] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   checkout     : check out a pull request in git
@@ -76,6 +76,8 @@ Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|de
                  uuids are added as reviewers.
                  - The PR author will be removed from the potential
                    list of reviewers.
+                 - This will change the PR from draft to ready
+  draft        : Remove all the reviewers and mark as draft
 
 'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
 'close-branch' | 'status' | 'ready'
