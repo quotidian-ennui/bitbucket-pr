@@ -40,8 +40,8 @@ _bb-pr() {
     bb-pr,squash-merge)
       cmd="bb-pr__squash-merge"
       ;;
-    bb-pr,squash-msg)
-      cmd="bb-pr__squash-msg"
+    bb-pr,message)
+      cmd="bb-pr__message"
       ;;
     bb-pr,status)
       cmd="bb-pr__status"
@@ -64,7 +64,7 @@ _bb-pr() {
 
   case "${cmd}" in
   bb-pr)
-    opts="approve checkout close-branch co completion decline help list ready squash-merge squash-msg status unapprove whoami draft"
+    opts="approve checkout close-branch co completion decline help list ready squash-merge message status unapprove whoami draft"
     if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
       mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
       return 0
