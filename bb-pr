@@ -43,7 +43,9 @@ GIT_REMOTE_BRANCH_FULL=$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 
 GIT_REMOTE_BRANCH=${GIT_REMOTE_BRANCH_FULL#*/}
 GIT_LOCAL_WORKING_BRANCH=$(git branch --show-current 2>/dev/null) || true
 GIT_REMOTE_DEFAULT=$(git remote show origin 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5) || true
-ACTION_LIST="help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami|ready|draft"
+PREFERRED_ACTIONS_LIST="help|list|checkout|co|message|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami|ready|draft"
+ACTION_LIST="$PREFERRED_ACTIONS_LIST|squash-msg"
+
 WORK_FILE=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 SQUASH_MERGE_OUTPUT=$(mktemp --tmpdir bb-pr-squash-merge.XXXXXX)
 
@@ -112,12 +114,15 @@ action_help() {
 
 Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: $(basename "$0") [$ACTION_LIST] [options]
+Usage: $(basename "$0") [$PREFERRED_ACTIONS_LIST] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   checkout     : check out a pull request in git
   co           : alias for checkout
-  squash-msg   : copy a reasonable message to the clipboard for merging a PR
+  message      : copy a reasonable message to the clipboard for merging a PR
+                 (squash-msg still exists for backwards compatibility but
+                 will be removed real soon now to avoid conflicts with completion
+                 convenience)
   squash-merge : merge the PR using the message from 'squash-msg'
   approve      : approve a PR (though should you from the CLI?)
   unapprove    : remove your approval
@@ -135,8 +140,8 @@ Usage: $(basename "$0") [$ACTION_LIST] [options]
                  - This will change the PR from draft to ready
   draft        : Remove all the reviewers and mark as draft
 
-'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
-'close-branch' | 'status' | 'ready'
+'message' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
+'close-branch' | 'status' | 'ready' | 'draft'
 
 Without an argument, the pull request that belongs to the current branch is used.
 
@@ -245,6 +250,11 @@ action_unapprove() {
 }
 
 action_squash-msg() {
+  echo -e "\n>>> use of deprecated 'squash-msg', try 'message' instead"
+  action_message "$@"
+}
+
+action_message() {
   local pr_number=$1
   local squash_merge_msg
 
@@ -260,6 +270,7 @@ action_squash-msg() {
   echo "is now in your clipboard"
   # shellcheck disable=SC2091
   echo "$squash_merge_msg" | eval "$(clipboard_exe)"
+
 }
 
 action_squash-merge() {
