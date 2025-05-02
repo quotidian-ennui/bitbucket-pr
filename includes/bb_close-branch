@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+action_close-branch() {
+  close_branch="true"
+  ARGS=$(getopt --options 'c:' -- "${@}")
+  eval "set -- ${ARGS}"
+  while true; do
+    case "${1}" in
+    -c)
+      close_branch="${2}"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) action_help ;;
+    esac
+  done
+  local pr_number="$1"
+  pr_number=$(get_pr_number "$pr_number")
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  json_payload=$(jf '{%**q}' "close_source_branch" "$close_branch")
+  echo "$json_payload" >"$WORK_FILE"
+  curl -X PUT $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" | jq --raw-output '"close_source_branch now \(.close_source_branch)"'
+}

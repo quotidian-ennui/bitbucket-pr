@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+
+# If we wanted to replicate the merge checks view in the UI we would
+# have to manually do https://jira.atlassian.com/browse/BCLOUD-22014
+# build-status we are doing
+action_status() {
+  local pr_number=$1
+  local name
+  local status
+  local statusUrl
+  local approvalList
+  local buildStatusList
+
+  pr_number=$(get_pr_number "$pr_number")
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+  __status_header "$pr_number"
+  __status_builds "$pr_number"
+  __status_approvals "$pr_number"
+  echo -e ">>> PR commit message:\n"
+  __emit_squash_merge_msg "$pr_number"
+}
+
+__status_header() {
+  local pr_number=$1
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+
+  body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
+  html_url=$(echo "$body" | jq -r '.links.html.href')
+  branch_name=$(echo "$body" | jq -r '.source.branch.name')
+  behind=$(git rev-list --left-right --count origin/"$GIT_REMOTE_DEFAULT"...origin/"$branch_name" 2>/dev/null | cut -f1 || true)
+
+  echo -e ">>> PR#$pr_number: $html_url\n"
+  if [[ "$behind" != "" && "$behind" -gt "0" ]]; then
+    echo -e ">>> This PR is behind $GIT_REMOTE_DEFAULT by $behind commits; potentially unmergeable\n"
+  fi
+}
+
+__status_approvals() {
+  local pr_number=$1
+  local name
+  local status
+  local uuid
+  local approvalList
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+
+  approvalList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" \
+    | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "uuid": .user.uuid, "approved": .state}')
+  if [[ -n "$approvalList" ]]; then
+    while IFS= read -r line; do
+      name=$(echo "$line" | jq -r '.name')
+      status=$(emoji "$(echo "$line" | jq -r '.approved')")
+      uuid=$(echo "$line" | jq -r '.uuid')
+      echo "$name|$status|$uuid"
+    done <<<"$approvalList" | column -s"|" -t  -N "NAME,APPROVED,UUID"
+    echo ""
+  else
+    echo -e ">>> No REVIEWERS added to this PR\n"
+  fi
+}
+
+__status_builds() {
+  local pr_number=$1
+  local name
+  local status
+  local statusUrl
+  local buildStatusList
+
+  local build_status_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/statuses"
+  buildStatusList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" \
+    | jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
+  if [[ -n "$buildStatusList" ]]; then
+    while IFS= read -r line; do
+      name=$(echo "$line" | jq -r '.name')
+      status=$(emoji "$(echo "$line" | jq -r '.state')")
+      statusUrl=$(echo "$line" | jq -r '.url')
+      echo "$status|$name|$statusUrl"
+    done <<<"$buildStatusList" | column -s"|" -t  -N "STATUS,JOB,URL"
+    echo ""
+  fi
+}

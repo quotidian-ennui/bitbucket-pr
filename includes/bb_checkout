@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+action_checkout() {
+  local pr_number="$1"
+
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
+
+  branch=$(echo "$body" | jq --raw-output ".source.branch.name")
+
+  git fetch --all
+  git switch "$branch"
+}

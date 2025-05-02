@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+
+# Make a PR draft.
+#shellcheck disable=SC2002
+action_draft() {
+  local pr_number=$1
+  pr_number=$(get_pr_number "$pr_number")
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  local pr_body='
+{
+  "draft": true,
+  "reviewers": []
+}'
+  http_code=$(curl -X PUT -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
+  if [[ "$http_code" -ge "400" ]]; then
+    errorMsg=$(cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '.error.message')
+    if [[ "$errorMsg" != "" ]]; then
+      echo -e "$errorMsg"
+    else
+      cat "${SQUASH_MERGE_OUTPUT}"
+    fi
+    echo Operation failed...
+    exit 1
+  else
+    cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '"Draft Mode: \(.draft)"'
+  fi
+}
+

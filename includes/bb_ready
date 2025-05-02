@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# Finds your UUID from .author.uuid in the PR.
+#
+#shellcheck disable=SC2002
+action_ready() {
+  local pr_number=$1
+  #shellcheck disable=SC2016
+  local jq_reviewers='
+walk(if type == "object" and has("name") then del(.name) else . end) |
+walk (if type == "object" and .uuid == $uuid then empty else . end) |
+. += { "draft": false }'
+  local reviewers_file
+  local pr_body
+  local login_uuid
+  local http_code
+
+  pr_number=$(get_pr_number "$pr_number")
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  reviewers_file="${BITBUCKET_REVIEWERS:-${GIT_ROOT:-.}/.bitbucket/bitbucket-pr.yml}"
+  if [[ ! -s "$reviewers_file" ]]; then
+    echo -e "\n>>> Didn't find $reviewers_file; nothing to do;"
+    exit 0
+  fi
+  login_uuid=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '.author.uuid')
+  pr_body="$(cat "$reviewers_file" | yq -p yaml -o json | jq -r --arg uuid "$login_uuid" "$jq_reviewers")"
+  http_code=$(curl -X PUT -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
+  if [[ "$http_code" -ge "400" ]]; then
+    errorMsg=$(cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '.error.message')
+    if [[ "$errorMsg" != "" ]]; then
+      echo -e "$errorMsg"
+    else
+      cat "${SQUASH_MERGE_OUTPUT}"
+    fi
+    echo Operation failed...
+    exit 1
+  else
+    cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '"Added reviewer: \(.reviewers | .[] | .display_name)"'
+  fi
+
+}
+
