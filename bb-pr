@@ -15,7 +15,7 @@ SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 #shellcheck disable=SC1090
 source "$SCRIPT_DIR/includes/common"
 
-PREFERRED_ACTIONS_LIST="co|completion|whoami|list|prx|"
+PREFERRED_ACTIONS_LIST="co|completion|whoami|list|"
 
 build_actions() {
   for f in "$SCRIPT_DIR"/includes/bb_*; do
@@ -41,7 +41,7 @@ action_completion() {
 }
 
 action_whoami() {
-  curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$BITBUCKET_API_BASE/user" | jq 'del (.links)'
+  curl "$CURL_FLAGS" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$BITBUCKET_API_BASE/user" | jq 'del (.links)'
 }
 
 action_list() {

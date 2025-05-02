@@ -152,6 +152,14 @@ $squash_merge_details$squash_merge_footer$pr_approvers"
   echo "$squash_merge_msg"
 }
 
+__curl_only_http_code() {
+  local -n v="$1"
+  local url="$3"
+  {
+    v="$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" "$url" -w "%{stderr}%{http_code}" 2>&1 1>&3 3>&-)"
+  } 3>/dev/null
+}
+
 __emit_pr_list() {
   local jq_transform_with_url='.values[]
     | { "id": (.id | tostring), "title": .title, "url": .links.html.href }
@@ -167,7 +175,6 @@ __emit_pr_list() {
   local includeUrl="true"
   local jq_transform="$jq_transform_with_url"
   local state="OPEN"
-
   while getopts 's:q' flag; do
     case "${flag}" in
     s) state="${OPTARG}" ;;
@@ -177,12 +184,13 @@ __emit_pr_list() {
   done
   state=$(echo "$state" | tr '[:lower:]' '[:upper:]')
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests?state=$state"
+
   {
     next="$pull_request_url"
-    until [ "$next" == "null" ]; do
+    until [[ "$next" == "null" || "$next" == "" ]]; do
       response=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$next")
       echo "$response" | jq --raw-output "$jq_transform"
-      next=$(echo "$response" | jq --raw-output ".next")
+      next=$(echo "$response" | jq --raw-output ".next" || true)
     done
   }
 }

@@ -1,7 +1,21 @@
 #!/usr/bin/env bash
 
 action_checkout() {
-  local pr_number="$1"
+  local pr_number=${1:-}
+  if [[ -z "$pr_number" ]]; then
+    pr_list=$(__emit_pr_list -q)
+    if [[ -z "$pr_list" ]]; then
+        >&2 echo "bb-pr checkout: no PRS found, nothing to do."
+        exit 1
+    fi
+    if type -p fzf > /dev/null; then
+        selected_pr=$(fzf --height ~100% --prompt="Select PR > " <<< "${pr_list}")
+    else
+        >&2 echo "bb-pr checkout: need 'fzf' for fuzzy search"
+        exit 1
+    fi
+    pr_number=$(cut -d'|' -f1 <<< "${selected_pr}")
+  fi
 
   if [[ -z "$pr_number" ]]; then
     echo ">>> No PR"
