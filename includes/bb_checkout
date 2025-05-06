@@ -11,7 +11,7 @@ action_checkout() {
     if type -p fzf > /dev/null; then
         selected_pr=$(fzf --height ~100% --prompt="Select PR > " <<< "${pr_list}")
     else
-        >&2 echo "bb-pr checkout: need 'fzf' for fuzzy search"
+        >&2 echo "bb-pr checkout: need 'fzf' for fuzzy search if no pr_number"
         exit 1
     fi
     pr_number=$(cut -d'|' -f1 <<< "${selected_pr}")
@@ -23,7 +23,7 @@ action_checkout() {
   fi
 
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
-  body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
+  body=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
 
   branch=$(echo "$body" | jq --raw-output ".source.branch.name")
 

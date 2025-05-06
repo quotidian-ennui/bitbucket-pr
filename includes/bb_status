@@ -27,7 +27,7 @@ __status_header() {
   local pr_number=$1
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
-  body=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
+  body=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
   html_url=$(echo "$body" | jq -r '.links.html.href')
   branch_name=$(echo "$body" | jq -r '.source.branch.name')
   behind=$(git rev-list --left-right --count origin/"$GIT_REMOTE_DEFAULT"...origin/"$branch_name" 2>/dev/null | cut -f1 || true)
@@ -46,7 +46,7 @@ __status_approvals() {
   local approvalList
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
-  approvalList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" \
+  approvalList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" \
     | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "uuid": .user.uuid, "approved": .state}')
   if [[ -n "$approvalList" ]]; then
     while IFS= read -r line; do
@@ -69,7 +69,7 @@ __status_builds() {
   local buildStatusList
 
   local build_status_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/statuses"
-  buildStatusList=$(curl -X GET $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" \
+  buildStatusList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" \
     | jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
   if [[ -n "$buildStatusList" ]]; then
     while IFS= read -r line; do

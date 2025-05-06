@@ -26,7 +26,7 @@ walk (if type == "object" and .uuid == $uuid then empty else . end) |
     echo -e "\n>>> Didn't find $reviewers_file; nothing to do;"
     exit 0
   fi
-  login_uuid=$(curl $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '.author.uuid')
+  login_uuid=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '.author.uuid')
   pr_body="$(cat "$reviewers_file" | yq -p yaml -o json | jq -r --arg uuid "$login_uuid" "$jq_reviewers")"
   http_code=$(curl -X PUT -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
   if [[ "$http_code" -ge "400" ]]; then

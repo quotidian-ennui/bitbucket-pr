@@ -22,5 +22,5 @@ action_close-branch() {
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
   json_payload=$(jf '{%**q}' "close_source_branch" "$close_branch")
   echo "$json_payload" >"$WORK_FILE"
-  curl -X PUT $CURL_FLAGS --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" | jq --raw-output '"close_source_branch now \(.close_source_branch)"'
+  curl -X PUT "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" | jq --raw-output '"close_source_branch now \(.close_source_branch)"'
 }
