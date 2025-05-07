@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+action_squash-merge() {
+  local squash_merge_msg
+  local json_payload
+  local jq_transform='"\(.id)|\(.state)"'
+  #shellcheck disable=SC2016
+  local failure_jq_transform='.error | .message as $message | .fields | to_entries[] | "\($message)|\(.value)"'
+  local delete_local_branch=""
+  local force_close_branch=""
+
+  ARGS=$(getopt --options 'D' -- "${@}")
+  eval "set -- ${ARGS}"
+  while true; do
+    case "${1}" in
+    -D)
+      force_close_branch="true"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) action_help ;;
+    esac
+  done
+
+  local pr_number="$1"
+  # If there's no PR number then we assume we're branch based
+  # and since we are squash merging we try to behave like gh squash-merge
+  # and delete the local working branch
+  if [[ -z "$pr_number" ]]; then
+    pr_number=$(get_pr_number "")
+    delete_local_branch="true"
+  fi
+
+  if [[ -z "$pr_number" ]]; then
+    echo ">>> No PR"
+    exit 1
+  fi
+
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/merge"
+
+  squash_merge_msg=$(__emit_squash_merge_msg "$pr_number")
+
+  # https://developer.atlassian.com/cloud/bitbucket/rest/api-group-pullrequests/
+  # mentions a mandatory 'type' in the request body, but there's no docs
+  # as to what the value should be; but we should be safe to
+  # assume it's the 'type' that you get back when you grab the pullrequest
+  # /repositories/{workspace}/{repo_slug}/pullrequests/{pull_request_id}
+  # probably want some tempfile action for a bit of --data @filename
+  if [[ -n "$force_close_branch" ]]; then
+    json_payload=$(jf '{%**q}' "type" "pullrequest" "message" "$squash_merge_msg" "close_source_branch" "true" "merge_strategy" "squash")
+  else
+    json_payload=$(jf '{%**q}' "type" "pullrequest" "message" "$squash_merge_msg" "merge_strategy" "squash")
+  fi
+  echo "$json_payload" >"$WORK_FILE"
+  http_code=$(curl -X POST -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "@$WORK_FILE" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
+  if [[ "$http_code" -ge "400" ]]; then
+    #shellcheck disable=SC2002
+    errorMsg=$(cat "${SQUASH_MERGE_OUTPUT}" | jq --raw-output "$failure_jq_transform" | column -s "|" -t -N "ID,STATE")
+    if [[ "$errorMsg" != "" ]]; then
+      echo -e "$errorMsg"
+    else
+      cat "${SQUASH_MERGE_OUTPUT}"
+    fi
+    echo Operation failed...
+    exit 1
+  else
+    #shellcheck disable=SC2002
+    cat "${SQUASH_MERGE_OUTPUT}" | jq --raw-output "$jq_transform" | column -s "|" -t -N "ID,STATE"
+    if [[ -n "$delete_local_branch" ]]; then
+      git_switch_default
+    fi
+  fi
+}
