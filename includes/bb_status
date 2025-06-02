@@ -13,7 +13,7 @@ action_status() {
 
   pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
-    echo ">>> No PR"
+    echo "$(emoji 'WARN') No PR"
     exit 1
   fi
   __status_header "$pr_number"
@@ -34,7 +34,7 @@ __status_header() {
 
   echo -e ">>> PR#$pr_number: $html_url\n"
   if [[ "$behind" != "" && "$behind" -gt "0" ]]; then
-    echo -e ">>> This PR is behind $GIT_REMOTE_DEFAULT by $behind commits; potentially unmergeable\n"
+    echo -e "$(emoji 'WARN') This PR is behind $GIT_REMOTE_DEFAULT (locally) by $behind commits; potentially unmergeable\n"
   fi
 }
 
@@ -57,7 +57,7 @@ __status_approvals() {
     done <<<"$approvalList" | column -s"|" -t  -N "NAME,APPROVED,UUID"
     echo ""
   else
-    echo -e ">>> No REVIEWERS added to this PR\n"
+    echo -e "$(emoji 'INFO') No REVIEWERS added to this PR\n"
   fi
 }
 
