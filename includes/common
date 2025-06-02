@@ -15,6 +15,10 @@ emojiMap[null]="👀"
 emojiMap[true]="👍"
 emojiMap[false]="👀"
 
+# info/warning msgs.
+emojiMap[WARN]="⚠️"
+emojiMap[INFO]="ℹ️"
+
 _giturl_to_base() {
   local url=$1
   url=${url%%.git}
