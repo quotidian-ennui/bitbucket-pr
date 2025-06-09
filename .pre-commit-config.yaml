@@ -1,0 +1,17 @@
+repos:
+  - repo: local
+    hooks:
+      - id: shfmt
+        name: shfmt
+        entry: shfmt -i 2 -w
+        fail_fast: true
+        types: [shell]
+        language: system
+        stages: [pre-commit]
+      - id: shellcheck
+        name: shellcheck
+        entry: shellcheck
+        language: system
+        fail_fast: true
+        types: [shell]
+        stages: [pre-commit]

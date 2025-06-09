@@ -49,8 +49,7 @@ CURL_FLAGS=("-S" "-s" "-L" "-f")
 emoji() {
   local key=$1
   if [[ "$EMOJIS_DISABLED" == "false" ]]; then
-    for mapEntry in "${!emojiMap[@]}"
-    do
+    for mapEntry in "${!emojiMap[@]}"; do
       [[ "$key" == "$mapEntry" ]] && echo "${emojiMap[${key}]}" && return
     done
   fi
@@ -92,7 +91,6 @@ get_pr_number() {
   echo "$pr_number"
 }
 
-
 git_switch_default() {
   if [[ -n "$GIT_REMOTE_DEFAULT" && "$GIT_LOCAL_WORKING_BRANCH" ]]; then
     git switch "$GIT_REMOTE_DEFAULT"
@@ -126,12 +124,12 @@ __emit_squash_merge_msg() {
   shopt -s extglob
   squash_merge_details=${squash_merge_details%%*($'\n')} # remove all trailing newlines
   squash_merge_details=${squash_merge_details##*($'\n')} # remove all leading newlines
-  squash_merge_footer=${squash_merge_footer%%*($'\n')} # remove all trailing newlines
-  squash_merge_footer=${squash_merge_footer##*($'\n')} # remove all leading newlines
+  squash_merge_footer=${squash_merge_footer%%*($'\n')}   # remove all trailing newlines
+  squash_merge_footer=${squash_merge_footer##*($'\n')}   # remove all leading newlines
   shopt -u extglob
 
   squash_merge_details=$(echo "${squash_merge_details}" | sed -E 's/\[(.*?)\]\(.*?\)/\1/g') # remove markdown links
-  squash_merge_footer=$(echo "${squash_merge_footer}" | sed -E 's/\[(.*?)\]\(.*?\)/\1/g') # remove markdown links
+  squash_merge_footer=$(echo "${squash_merge_footer}" | sed -E 's/\[(.*?)\]\(.*?\)/\1/g')   # remove markdown links
 
   if [[ -n "$squash_merge_details" ]]; then
     squash_merge_details="${squash_merge_details}"$'\n'$'\n' # add linebreaks to space out approver if set
@@ -178,7 +176,10 @@ __emit_pr_list() {
   while getopts 's:q' flag; do
     case "${flag}" in
     s) state="${OPTARG}" ;;
-    q) jq_transform="$jq_transform_sans_url" ;;
+    q)
+      jq_transform="$jq_transform_sans_url"
+      includeUrl="false"
+      ;;
     *) action_help ;;
     esac
   done
@@ -187,25 +188,30 @@ __emit_pr_list() {
 
   {
     next="$pull_request_url"
+    results=""
     until [[ "$next" == "null" || "$next" == "" ]]; do
       response=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$next")
-      echo "$response" | jq --raw-output "$jq_transform"
+      results+=$(echo "$response" | jq --raw-output "$jq_transform")
       next=$(echo "$response" | jq --raw-output ".next" || true)
     done
+
+    column_args=()
+    if [[ "$includeUrl" == "true" ]]; then
+      column_args=(-N "ID,TITLE,URL")
+    else
+      column_args=(-N "ID,TITLE")
+    fi
+    echo "$results" | sort | column -s "|" -t "${column_args[@]}"
   }
 }
 
 __pr_from_fzf() {
   local pr_number=""
 
-  if type -p fzf > /dev/null; then
-    pr_list=$(__emit_pr_list -q)
-    if [[ -z "$pr_list" ]]; then
-        >&2 echo "bb-pr: no PRS found, nothing to do."
-        exit 1
-    fi
-    selected_pr=$(fzf --height ~100% --prompt="Select PR > " <<< "${pr_list}")
-    pr_number=$(cut -d'|' -f1 <<< "${selected_pr}")
+  if type -p fzf >/dev/null; then
+    pr_number=$(bb-pr list -q |
+      fzf --height 50% --layout reverse --no-sort --header-lines 1 --prompt="Select PR > " |
+      cut -d' ' -f1)
   fi
   echo "$pr_number"
 }
