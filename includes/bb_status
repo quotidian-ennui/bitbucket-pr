@@ -46,18 +46,18 @@ __status_approvals() {
   local approvalList
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
-  approvalList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" \
-    | jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "uuid": .user.uuid, "approved": .state}')
+  approvalList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" |
+    jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "uuid": .user.uuid, "approved": .state}')
   if [[ -n "$approvalList" ]]; then
     while IFS= read -r line; do
       name=$(echo "$line" | jq -r '.name')
       status=$(emoji "$(echo "$line" | jq -r '.approved')")
       uuid=$(echo "$line" | jq -r '.uuid')
       echo "$name|$status|$uuid"
-    done <<<"$approvalList" | column -s"|" -t  -N "NAME,APPROVED,UUID"
+    done <<<"$approvalList" | column -s"|" -t -N "NAME,APPROVED,UUID"
     echo ""
   else
-    echo -e "$(emoji 'INFO') No REVIEWERS added to this PR\n"
+    echo -e "$(emoji 'INFO')  No REVIEWERS added to this PR\n"
   fi
 }
 
@@ -69,15 +69,15 @@ __status_builds() {
   local buildStatusList
 
   local build_status_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/statuses"
-  buildStatusList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" \
-    | jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
+  buildStatusList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" |
+    jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
   if [[ -n "$buildStatusList" ]]; then
     while IFS= read -r line; do
       name=$(echo "$line" | jq -r '.name')
       status=$(emoji "$(echo "$line" | jq -r '.state')")
       statusUrl=$(echo "$line" | jq -r '.url')
       echo "$status|$name|$statusUrl"
-    done <<<"$buildStatusList" | column -s"|" -t  -N "STATUS,JOB,URL"
+    done <<<"$buildStatusList" | column -s"|" -t -N "STATUS,JOB,URL"
     echo ""
   fi
 }

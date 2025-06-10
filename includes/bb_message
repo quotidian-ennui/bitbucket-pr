@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 action_message() {
   local pr_number=$1
   local squash_merge_msg
@@ -19,4 +18,3 @@ action_message() {
   echo "$squash_merge_msg" | eval "$(clipboard_exe)"
 
 }
-

@@ -12,7 +12,7 @@
 set -eo pipefail
 
 SCRIPT_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
-#shellcheck disable=SC1090
+# shellcheck source=/dev/null
 source "$SCRIPT_DIR/includes/common"
 
 PREFERRED_ACTIONS_LIST="co|completion|whoami|list|"
@@ -45,7 +45,7 @@ action_whoami() {
 }
 
 action_list() {
-  __emit_pr_list "$@" | sort | column -s "|" -t -N "ID,TITLE,URL"
+  __emit_pr_list "$@"
 }
 
 build_actions

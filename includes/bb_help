@@ -72,4 +72,3 @@ bsh ❯ bb-pr squash-merge -D 5
 EOF
   exit 2
 }
-

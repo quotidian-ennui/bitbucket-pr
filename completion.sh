@@ -1,5 +1,26 @@
 # shellcheck shell=bash
 
+__bb-pr_bkt() {
+  if ! command -v bkt >&/dev/null; then
+    # If bkt isn't installed skip its arguments and just execute directly.
+    while [[ "$1" == --* ]]; do shift; done
+    "$@"
+  else
+    bkt "$@"
+  fi
+}
+
+_bb-pr_list_from_fzf() {
+  if type -p fzf >/dev/null; then
+    # To redraw line after fzf closes
+    bind '"\e[0n": redraw-current-line' 2>/dev/null
+
+    __bb-pr_bkt --scope=bb=pr --cwd --ttl=10m --discard-failures -- bb-pr list -q | fzf --height 50% --layout reverse --no-sort --header-lines 1 --prompt="Select PR > " |
+      cut -d' ' -f1
+    return
+  fi
+}
+
 _bb-pr() {
   local i cur prev opts cmd
   COMPREPLY=()
@@ -8,7 +29,7 @@ _bb-pr() {
   cmd=""
   opts=""
 
-  for i in "${COMP_WORDS[@]}"; do
+  for i in "${COMP_WORDS[@]:0:COMP_CWORD}"; do
     case "${cmd},${i}" in
     ",$1")
       cmd="bb-pr"
@@ -65,78 +86,56 @@ _bb-pr() {
   case "${cmd}" in
   bb-pr)
     opts="approve checkout close-branch co completion decline help list ready squash-merge message status unapprove whoami draft"
-    if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]]; then
-      mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
-      return 0
-    fi
-    case "${prev}" in
-    *)
-      COMPREPLY=()
-      ;;
-    esac
     mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
     return 0
     ;;
   bb-pr__close-branch)
-    opts="-c"
-    if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
-      mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
-      return 0
-    fi
     case "${prev}" in
     -c)
       mapfile -t COMPREPLY < <(compgen -W "true false" -- "${cur}")
       return 0
       ;;
-    true | false)
-      mapfile -t COMPREPLY < <(compgen -- "${cur}")
-      return 0
-      ;;
-    *)
-      COMPREPLY=()
-      ;;
     esac
-    mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
+
+    if [[ ${cur} == -* ]]; then
+      opts="-c"
+      mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
+      return 0
+    fi
+
+    mapfile -t COMPREPLY < <(_bb-pr_list_from_fzf)
+    printf '\e[5n'
     return 0
     ;;
   bb-pr__squash-merge)
-    opts="-D"
-    if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
+    if [[ ${cur} == -* ]]; then
+      opts="-D"
       mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
       return 0
     fi
-    case "${prev}" in
-    -D)
-      mapfile -t COMPREPLY < <(compgen -- "${cur}")
-      return 0
-      ;;
-    *)
-      COMPREPLY=()
-      ;;
-    esac
-    mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
+
+    mapfile -t COMPREPLY < <(_bb-pr_list_from_fzf)
+    printf '\e[5n'
     return 0
     ;;
+
   bb-pr__list)
-    opts="-s"
-    if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]]; then
-      mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
-      return 0
-    fi
     case "${prev}" in
     -s)
       mapfile -t COMPREPLY < <(compgen -W "OPEN MERGED DECLINED SUPERSEDED" -- "${cur}")
       return 0
       ;;
-    OPEN | MERGED | DECLINED | SUPERSEDED)
-      mapfile -t COMPREPLY < <(compgen -- "${cur}")
-      return 0
-      ;;
-    *)
-      COMPREPLY=()
-      ;;
     esac
-    mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
+
+    if [[ ${cur} == -* ]]; then
+      opts="-s"
+      mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
+      return 0
+    fi
+    ;;
+  bb-pr__approve | bb-pr__checkout | bb-pr__decline | bb-pr__ready | bb-pr__message | bb-pr__status | bb-pr__unapprove | bb-pr__draft)
+    mapfile -t COMPREPLY < <(_bb-pr_list_from_fzf)
+    printf '\e[5n'
     return 0
     ;;
   esac

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-
 # Make a PR draft.
 #shellcheck disable=SC2002
 action_draft() {
@@ -30,4 +29,3 @@ action_draft() {
     cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '"Draft Mode: \(.draft)"'
   fi
 }
-
