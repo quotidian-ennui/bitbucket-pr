@@ -21,6 +21,20 @@ jobs:
         with:
           reporter: github-pr-review
           check_all_files_with_shebangs: true
+          fail_level: error
+          github_token: ${{ secrets.github_token }}
+
+  shfmt:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: shfmt
+        uses: reviewdog/action-shfmt@d8f080930b9be5847b4f97e9f4122b81a82aaeac # v1.0.4
+        with:
           fail_on_error: true
           github_token: ${{ secrets.github_token }}
 
@@ -73,6 +87,7 @@ jobs:
       - committed
       - typos
       - pr-title
+      - shfmt
     permissions:
       contents: write
       pull-requests: read
