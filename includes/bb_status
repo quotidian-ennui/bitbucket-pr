@@ -31,11 +31,29 @@ __status_header() {
   html_url=$(echo "$body" | jq -r '.links.html.href')
   branch_name=$(echo "$body" | jq -r '.source.branch.name')
   behind=$(git rev-list --left-right --count origin/"$GIT_REMOTE_DEFAULT"...origin/"$branch_name" 2>/dev/null | cut -f1 || true)
-
   echo -e ">>> PR#$pr_number: $html_url\n"
+  __status_extended "$body"
   if [[ "$behind" != "" && "$behind" -gt "0" ]]; then
     echo -e "$(emoji 'WARN') This PR is behind $GIT_REMOTE_DEFAULT (locally) by $behind commits; potentially unmergeable\n"
   fi
+
+}
+
+__status_extended() {
+  local body="$1"
+  local is_draft="false"
+  local delete_source_branch="false"
+  local task_count="0"
+  is_draft=$(echo "$body" | jq -r '.draft')
+  delete_source_branch=$(echo "$body" | jq -r '.close_source_branch')
+  task_count=$(echo "$body" | jq -r '.task_count')
+  echo "$(emoji 'EXTRA') Additional Info"
+  (
+    echo "close_source_branch|$delete_source_branch"
+    echo "task_count|$task_count"
+    echo "is_draft|$is_draft"
+  ) | column -s"|" -t
+  echo ""
 }
 
 __status_approvals() {

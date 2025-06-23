@@ -18,6 +18,7 @@ emojiMap[false]="👀"
 # info/warning msgs.
 emojiMap[WARN]="⚠️"
 emojiMap[INFO]="ℹ️"
+emojiMap[EXTRA]="🔎"
 
 _giturl_to_base() {
   local url=$1
