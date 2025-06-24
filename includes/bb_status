@@ -46,7 +46,7 @@ __status_extended() {
   local task_count="0"
   local state=""
   local pr_number=""
-  read pr_number is_draft delete_source_branch task_count state < <(echo "$body" | jq -r '[.id, .draft, .close_source_branch, .task_count, .state] | @tsv')
+  read -r pr_number is_draft delete_source_branch task_count state < <(echo "$body" | jq -r '[.id, .draft, .close_source_branch, .task_count, .state] | @tsv')
   echo -e "$(emoji 'VERBOSE') Additional Info\n"
   (
     echo "delete branch on merge|$delete_source_branch"
