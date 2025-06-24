@@ -44,15 +44,37 @@ __status_extended() {
   local is_draft="false"
   local delete_source_branch="false"
   local task_count="0"
+  local state=""
+  local pr_number=""
+  pr_number=$(echo "$body" | jq -r '.id')
   is_draft=$(echo "$body" | jq -r '.draft')
   delete_source_branch=$(echo "$body" | jq -r '.close_source_branch')
   task_count=$(echo "$body" | jq -r '.task_count')
-  echo "$(emoji 'EXTRA') Additional Info"
+  state=$(echo "$body" | jq -r '.state')
+  echo -e "$(emoji 'VERBOSE') Additional Info\n"
   (
-    echo "close_source_branch|$delete_source_branch"
-    echo "task_count|$task_count"
-    echo "is_draft|$is_draft"
+    echo "delete branch on merge|$delete_source_branch"
+    echo "draft|$is_draft"
+    echo "state|$state"
   ) | column -s"|" -t
+  echo ""
+  if [[ "$task_count" -gt 0 ]]; then
+    # There are unresolved tasks
+    __status_unfinished_tasks "$pr_number"
+  fi
+}
+
+# task_count=0 if all tasks are resolved, so this is
+# implicitly "unresolved tasks"
+__status_unfinished_tasks() {
+  local pr_number="$1"
+  local task_body=""
+  local jq_task_table='.values[] | "- \(.content.raw)"'
+  local task_list_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/tasks"
+
+  task_body=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$task_list_url")
+  echo -e "$(emoji 'VERBOSE') Tasks Remaining\n"
+  echo "$task_body" | jq -r "$jq_task_table"
   echo ""
 }
 
@@ -67,6 +89,7 @@ __status_approvals() {
   approvalList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" |
     jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "uuid": .user.uuid, "approved": .state}')
   if [[ -n "$approvalList" ]]; then
+    echo -e "$(emoji 'VERBOSE') Approvers\n"
     while IFS= read -r line; do
       name=$(echo "$line" | jq -r '.name')
       status=$(emoji "$(echo "$line" | jq -r '.approved')")
@@ -90,6 +113,7 @@ __status_builds() {
   buildStatusList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" |
     jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
   if [[ -n "$buildStatusList" ]]; then
+    echo -e "$(emoji 'VERBOSE') Builds\n"
     while IFS= read -r line; do
       name=$(echo "$line" | jq -r '.name')
       status=$(emoji "$(echo "$line" | jq -r '.state')")
