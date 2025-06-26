@@ -57,6 +57,19 @@ emoji() {
   echo "$key"
 }
 
+confirm_yes() {
+  # call with a prompt string or use a default
+  read -r -p "${1:-Are you sure? [y/N]} " response
+  case "$response" in
+  [yY][eE][sS] | [yY])
+    true
+    ;;
+  *)
+    false
+    ;;
+  esac
+}
+
 # Need to get someone to let me test on a mac.
 # Macs can use pbcopy apparently, but they should just
 # set the BB_PR_CLIPBOARD env variable
@@ -111,7 +124,7 @@ __emit_squash_merge_msg() {
   local jq_approvers='.participants | .[] | select(.approved==true) | "Approved-By: \(.user.display_name)"'
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
-  body=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
+  body=$(__bb_rest_invoke "$pull_request_url")
   description=$(echo "$body" | jq --raw-output '.description | gsub("\\\\"; "")')
   title=$(echo "$body" | jq --raw-output ".title")
   # Is - is nicer than *
@@ -159,6 +172,10 @@ __curl_only_http_code() {
   } 3>/dev/null
 }
 
+__bb_rest_invoke() {
+  curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$@"
+}
+
 __emit_pr_list() {
   local jq_transform_with_url='.values[]
     | { "id": (.id | tostring), "title": .title, "url": .links.html.href }
@@ -191,7 +208,7 @@ __emit_pr_list() {
     next="$pull_request_url"
     results=""
     until [[ "$next" == "null" || "$next" == "" ]]; do
-      response=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$next")
+      response=$(__bb_rest_invoke "$next")
       results+=$(echo "$response" | jq --raw-output "$jq_transform")
       next=$(echo "$response" | jq --raw-output ".next" || true)
     done
@@ -224,7 +241,7 @@ __pr_from_branch() {
     query=$(printf "source.branch.name=\"%s\" AND state=\"OPEN\"" "${GIT_REMOTE_BRANCH}")
     query_uri=$(printf %s "${query}" | jq -sRr @uri)
     local pull_request_query_url="${BITBUCKET_REPO_API_URL}/${BITBUCKET_SLUG}/pullrequests?q=${query_uri}"
-    pr_number=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "${pull_request_query_url}" | jq .values[0].id)
+    pr_number=$(__bb_rest_invoke "${pull_request_query_url}" | jq .values[0].id)
     if [ "$pr_number" != "null" ]; then
       echo "$pr_number"
     fi
