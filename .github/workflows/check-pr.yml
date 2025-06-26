@@ -37,6 +37,7 @@ jobs:
         with:
           fail_on_error: true
           github_token: ${{ secrets.github_token }}
+          shfmt_flags: -i 2
 
   committed:
     runs-on: ubuntu-latest
