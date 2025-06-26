@@ -30,7 +30,7 @@ action_decline() {
   __bb_rest_invoke -X POST "$pull_request_url" | jq --raw-output '"\(.state)"'
 
   if [[ "$force_delete_branch" == "true" ]]; then
-    confirm_yes "Are you sure you want delete the branch (N|y) ?"
+    confirm_yes "Are you sure you want to delete the branch (N|y)?"
     __delete_branch "$pr_number"
   fi
 }
