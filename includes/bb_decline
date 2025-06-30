@@ -1,8 +1,24 @@
 #!/usr/bin/env bash
 
-
-
 action_decline() {
+  local force_delete_branch="false"
+
+  ARGS=$(getopt --options 'D' -- "${@}")
+  eval "set -- ${ARGS}"
+  while true; do
+    case "${1}" in
+    -D)
+      force_delete_branch="true"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *) action_help ;;
+    esac
+  done
+
   local pr_number="$1"
   pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
@@ -11,7 +27,20 @@ action_decline() {
   fi
 
   local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/decline"
+  __bb_rest_invoke -X POST "$pull_request_url" | jq --raw-output '"\(.state)"'
 
-  curl -X POST "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '"\(.state)"'
+  if [[ "$force_delete_branch" == "true" ]]; then
+    confirm_yes "Are you sure you want to delete the branch (N|y)?"
+    __delete_branch "$pr_number"
+  fi
 }
 
+__delete_branch() {
+  local pr_number="$1"
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  body=$(__bb_rest_invoke "$pull_request_url")
+  # Need URL encoding so feat/xyz gets handled.
+  branch=$(echo "$body" | jq --raw-output '.source.branch.name | @uri')
+  local delete_branch_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/refs/branches/$branch"
+  __bb_rest_invoke -X DELETE "$delete_branch_url"
+}

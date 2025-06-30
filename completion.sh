@@ -118,7 +118,17 @@ _bb-pr() {
     printf '\e[5n'
     return 0
     ;;
+  bb-pr__decline)
+    if [[ ${cur} == -* ]]; then
+      opts="-D"
+      mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
+      return 0
+    fi
 
+    mapfile -t COMPREPLY < <(_bb-pr_list_from_fzf)
+    printf '\e[5n'
+    return 0
+    ;;
   bb-pr__list)
     case "${prev}" in
     -s)
@@ -133,7 +143,7 @@ _bb-pr() {
       return 0
     fi
     ;;
-  bb-pr__approve | bb-pr__checkout | bb-pr__decline | bb-pr__ready | bb-pr__message | bb-pr__status | bb-pr__unapprove | bb-pr__draft)
+  bb-pr__approve | bb-pr__checkout | bb-pr__ready | bb-pr__message | bb-pr__status | bb-pr__unapprove | bb-pr__draft)
     mapfile -t COMPREPLY < <(_bb-pr_list_from_fzf)
     printf '\e[5n'
     return 0

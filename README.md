@@ -35,13 +35,14 @@ Ref:
 
 - You need to install [yq](https://github.com/mikefarah/yq), [jq](https://github.com/jqlang/jq) & [jf](https://github.com/sayanarijit/jf).
 - You will already have the standard tooling like `curl` | `tr` | `column` etc.
-- You need to define some environment variables to control your access to bitbucket (c.f. use [app-passwords](https://support.atlassian.com/bitbucket-cloud/docs/app-passwords/))
+- You need to define some environment variables to control your access to bitbucket (c.f. use [app-passwords](https://support.atlassian.com/bitbucket-cloud/docs/app-passwords/) or [api-tokens](https://support.atlassian.com/bitbucket-cloud/docs/create-an-api-token/))
   - Remember to give yourself write access to pull requests.
+  - If you use -D a lot then you may well need to have repository write access as well.
 - If you don't like emojis (or they don't display in your terminal): `export BB_PR_DISABLE_EMOJIS=true`
 
 ```bash
-export BITBUCKET_USER=my_bitbucket_username
-export BITBUCKET_TOKEN=my_bitbucket_app_password
+export BITBUCKET_USER=my_bitbucket_username || my_atlassian_email_address
+export BITBUCKET_TOKEN=my_bitbucket_app_password || my_atlassian_api_token
 ```
 
 - Check this repo out, and put it in the path.
@@ -53,15 +54,17 @@ eval "$(bb-pr completion)"
 ```
 
 ```console
-
 Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|decline|close-branch|completion|status|whoami|ready|draft] [options]
+Usage: bb-pr [co|completion|whoami|list|approve|checkout|close-branch|decline|draft|help|message|ready|squash-merge|status|unapprove] [options]
   help         : show this help
   list         : list (open) PRs in this repo
   checkout     : check out a pull request in git
   co           : alias for checkout
-  squash-msg   : copy a reasonable message to the clipboard for merging a PR
+  message      : copy a reasonable message to the clipboard for merging a PR
+                 (squash-msg still exists for backwards compatibility but
+                 will be removed real soon now to avoid conflicts with completion
+                 convenience)
   squash-merge : merge the PR using the message from 'squash-msg'
   approve      : approve a PR (though should you from the CLI?)
   unapprove    : remove your approval
@@ -79,8 +82,8 @@ Usage: bb-pr [help|list|checkout|co|squash-msg|squash-merge|approve|unapprove|de
                  - This will change the PR from draft to ready
   draft        : Remove all the reviewers and mark as draft
 
-'squash-msg' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
-'close-branch' | 'status' | 'ready'
+'message' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
+'close-branch' | 'status' | 'ready' | 'draft'
 
 Without an argument, the pull request that belongs to the current branch is used.
 
@@ -94,6 +97,11 @@ Arguments
   -D : force close the branch regardless of the PR setting. If not
        specified then the PR will be merged according to the PR
        settings.
+
+'decline' can do dangerous things
+  -D : Delete the PR source branch after declining the PR
+       Nothing happens to your local branch if you are on the
+       PR source branch
 
 'list' can additionally filter by state
   -s : the state (e.g. -s OPEN) OPEN|MERGED|DECLINED|SUPERSEDED

@@ -47,6 +47,11 @@ Arguments
        specified then the PR will be merged according to the PR
        settings.
 
+'decline' can do dangerous things
+  -D : Delete the PR source branch after declining the PR
+       Nothing happens to your local branch if you are on the
+       PR source branch
+
 'list' can additionally filter by state
   -s : the state (e.g. -s OPEN) OPEN|MERGED|DECLINED|SUPERSEDED
        If you get it wrong, you'll get all the PRs which may take
