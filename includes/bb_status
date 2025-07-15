@@ -8,26 +8,27 @@ action_status() {
   local name
   local status
   local statusUrl
-  local approvalList
   local buildStatusList
+  local body
 
   pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo "$(emoji 'WARN') No PR"
     exit 1
   fi
-  __status_header "$pr_number"
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  body=$(__bb_rest_invoke "$pull_request_url")
+
+  __status_header "$body"
   __status_builds "$pr_number"
-  __status_approvals "$pr_number"
+  __status_approvals "$body"
   echo -e ">>> PR commit message:\n"
-  __emit_squash_merge_msg "$pr_number"
+  __emit_squash_merge_msg_from_body "$body"
 }
 
 __status_header() {
-  local pr_number=$1
-  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  local body="$1"
 
-  body=$(__bb_rest_invoke "$pull_request_url")
   html_url=$(echo "$body" | jq -r '.links.html.href')
   branch_name=$(echo "$body" | jq -r '.source.branch.name')
   behind=$(git rev-list --left-right --count origin/"$GIT_REMOTE_DEFAULT"...origin/"$branch_name" 2>/dev/null | cut -f1 || true)
@@ -77,14 +78,13 @@ __status_unfinished_tasks() {
 }
 
 __status_approvals() {
-  local pr_number=$1
   local name
   local status
   local uuid
+  local body="$1"
   local approvalList
-  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
-  approvalList=$(__bb_rest_invoke "$pull_request_url" |
+  approvalList=$(echo "$body" |
     jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "uuid": .user.uuid, "approved": .state}')
   if [[ -n "$approvalList" ]]; then
     echo -e "$(emoji 'VERBOSE') Approvers\n"
