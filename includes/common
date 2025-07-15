@@ -114,17 +114,14 @@ git_switch_default() {
   fi
 }
 
-__emit_squash_merge_msg() {
-  local body
+__emit_squash_merge_msg_from_body() {
+  local body="$1"
   local pr_approvers
   local squash_merge_details
   local title
   local description
-  local pr_number="$1"
   local jq_approvers='.participants | .[] | select(.approved==true) | "Approved-By: \(.user.display_name)"'
-  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
-  body=$(__bb_rest_invoke "$pull_request_url")
   description=$(echo "$body" | jq --raw-output '.description | gsub("\\\\"; "")')
   title=$(echo "$body" | jq --raw-output ".title")
   # Is - is nicer than *
@@ -162,6 +159,15 @@ $squash_merge_details$squash_merge_footer$pr_approvers"
   shopt -u extglob
 
   echo "$squash_merge_msg"
+}
+
+__emit_squash_merge_msg() {
+  local body
+  local pr_number="$1"
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+
+  body=$(__bb_rest_invoke "$pull_request_url")
+  __emit_squash_merge_msg_from_body "$body"
 }
 
 __curl_only_http_code() {
