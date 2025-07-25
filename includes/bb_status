@@ -8,26 +8,27 @@ action_status() {
   local name
   local status
   local statusUrl
-  local approvalList
   local buildStatusList
+  local body
 
   pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
     echo "$(emoji 'WARN') No PR"
     exit 1
   fi
-  __status_header "$pr_number"
+  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  body=$(__bb_rest_invoke "$pull_request_url")
+
+  __status_header "$body"
   __status_builds "$pr_number"
-  __status_approvals "$pr_number"
+  __status_approvals "$body"
   echo -e ">>> PR commit message:\n"
-  __emit_squash_merge_msg "$pr_number"
+  __emit_squash_merge_msg_from_body "$body"
 }
 
 __status_header() {
-  local pr_number=$1
-  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
+  local body="$1"
 
-  body=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url")
   html_url=$(echo "$body" | jq -r '.links.html.href')
   branch_name=$(echo "$body" | jq -r '.source.branch.name')
   behind=$(git rev-list --left-right --count origin/"$GIT_REMOTE_DEFAULT"...origin/"$branch_name" 2>/dev/null | cut -f1 || true)
@@ -46,12 +47,14 @@ __status_extended() {
   local task_count="0"
   local state=""
   local pr_number=""
-  read -r pr_number is_draft delete_source_branch task_count state < <(echo "$body" | jq -r '[.id, .draft, .close_source_branch, .task_count, .state] | @tsv')
+  local comment_count=""
+  read -r pr_number is_draft delete_source_branch task_count state comment_count < <(echo "$body" | jq -r '[.id, .draft, .close_source_branch, .task_count, .state, .comment_count] | @tsv')
   echo -e "$(emoji 'VERBOSE') Additional Info\n"
   (
     echo "delete branch on merge|$delete_source_branch"
     echo "draft|$is_draft"
     echo "state|$state"
+    echo "comments|$comment_count"
   ) | column -s"|" -t
   echo ""
   if [[ "$task_count" -gt 0 ]]; then
@@ -68,21 +71,20 @@ __status_unfinished_tasks() {
   local jq_task_table='.values[] | "- \(.content.raw)"'
   local task_list_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/tasks"
 
-  task_body=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$task_list_url")
+  task_body=$(__bb_rest_invoke "$task_list_url")
   echo -e "$(emoji 'VERBOSE') Tasks Remaining\n"
   echo "$task_body" | jq -r "$jq_task_table"
   echo ""
 }
 
 __status_approvals() {
-  local pr_number=$1
   local name
   local status
   local uuid
+  local body="$1"
   local approvalList
-  local pull_request_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number"
 
-  approvalList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" |
+  approvalList=$(echo "$body" |
     jq -r -c '.participants[] | select( .role == "REVIEWER") | { "name" : .user.display_name, "uuid": .user.uuid, "approved": .state}')
   if [[ -n "$approvalList" ]]; then
     echo -e "$(emoji 'VERBOSE') Approvers\n"
@@ -106,7 +108,7 @@ __status_builds() {
   local buildStatusList
 
   local build_status_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/statuses"
-  buildStatusList=$(curl -X GET "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$build_status_url" |
+  buildStatusList=$(__bb_rest_invoke "$build_status_url" |
     jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
   if [[ -n "$buildStatusList" ]]; then
     echo -e "$(emoji 'VERBOSE') Builds\n"
