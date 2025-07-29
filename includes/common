@@ -174,8 +174,30 @@ __bb_rest_invoke() {
   curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$@"
 }
 
+# __bb_rest_with_callback
+#
+# Performs a Bitbucket REST API request using curl, handles HTTP errors, and processes the response
+# via user-supplied success and failure callback functions.
+#
+# Arguments:
+#   $1 - The command to handle successful responses (successOutput)
+#   $2 - The command to handle error responses (failureOutput)
+#   $3 - The command to call after a successful response (successCallback), or "" for none
+#   $@ - Remaining arguments are passed directly to curl (e.g., -X PUT, URL, --data, etc.)
+#
+# Behaviour:
+#   - Executes curl with the provided arguments, writing output to $CURL_BB_OUTPUT and capturing HTTP code.
+#   - If HTTP code >= 400, invokes the failureOutput function with the response, prints its output,
+#     or prints the raw response if no message is found, then exits with error.
+#   - If HTTP code < 400, invokes the successOutput function with the response and, if provided,
+#     calls the successCallback function.
+#
+# Usage Example:
+#   __bb_rest_with_callback my_success_message my_failure_failure "if_successful_action"
+#      -X PUT -H "$CURL_HEADER_CTYPE" "$url" --data "$body"
 __bb_rest_with_callback() {
   local http_code
+  local errorMsg
   local successOutput="$1"
   local failureOutput="$2"
   local successCallback="$3"
