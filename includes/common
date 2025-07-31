@@ -193,7 +193,7 @@ __bb_rest_invoke() {
 #     calls the successCallback function.
 #
 # Usage Example:
-#   __bb_rest_with_callback my_success_message my_failure_message "if_successful_action"
+#   __bb_rest_with_callback "my_success_message_handler" "my_failure_message_handler" "if_successful_action"
 #      -X PUT -H "$CURL_HEADER_CTYPE" "$url" --data "$body"
 __bb_rest_with_callback() {
   local http_code
