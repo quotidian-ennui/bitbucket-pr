@@ -15,17 +15,17 @@ action_draft() {
   "draft": true,
   "reviewers": []
 }'
-  http_code=$(curl -X PUT -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
-  if [[ "$http_code" -ge "400" ]]; then
-    errorMsg=$(cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '.error.message')
-    if [[ "$errorMsg" != "" ]]; then
-      echo -e "$errorMsg"
-    else
-      cat "${SQUASH_MERGE_OUTPUT}"
-    fi
-    echo Operation failed...
-    exit 1
-  else
-    cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '"Draft Mode: \(.draft)"'
-  fi
+  __bb_rest_with_callback \
+    "__draft_success_output" \
+    "__draft_failure_output" \
+    "" \
+    -X PUT -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body"
+}
+
+__draft_success_output() {
+  jq --raw-output '"Draft Mode: \(.draft)"'
+}
+
+__draft_failure_output() {
+  jq --raw-output '.error.message'
 }

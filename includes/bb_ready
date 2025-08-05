@@ -13,7 +13,6 @@ walk (if type == "object" and .uuid == $uuid then empty else . end) |
   local reviewers_file
   local pr_body
   local login_uuid
-  local http_code
 
   pr_number=$(get_pr_number "$pr_number")
   if [[ -z "$pr_number" ]]; then
@@ -28,18 +27,17 @@ walk (if type == "object" and .uuid == $uuid then empty else . end) |
   fi
   login_uuid=$(curl "${CURL_FLAGS[@]}" --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" "$pull_request_url" | jq --raw-output '.author.uuid')
   pr_body="$(cat "$reviewers_file" | yq -p yaml -o json | jq -r --arg uuid "$login_uuid" "$jq_reviewers")"
-  http_code=$(curl -X PUT -sSL --user "$CURL_AUTH" -H "$CURL_HEADER_ACCEPT" -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body" -o "$SQUASH_MERGE_OUTPUT" -w "%{http_code}")
-  if [[ "$http_code" -ge "400" ]]; then
-    errorMsg=$(cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '.error.message')
-    if [[ "$errorMsg" != "" ]]; then
-      echo -e "$errorMsg"
-    else
-      cat "${SQUASH_MERGE_OUTPUT}"
-    fi
-    echo Operation failed...
-    exit 1
-  else
-    cat "$SQUASH_MERGE_OUTPUT" | jq --raw-output '"Added reviewer: \(.reviewers | .[] | .display_name)"'
-  fi
+  __bb_rest_with_callback \
+    "__ready_success_output" \
+    "__ready_failure_output" \
+    "" \
+    -X PUT -H "$CURL_HEADER_CTYPE" "$pull_request_url" "--data" "$pr_body"
+}
 
+__ready_success_output() {
+  jq --raw-output '"Added reviewer: \(.reviewers | .[] | .display_name)"'
+}
+
+__ready_failure_output() {
+  jq --raw-output '.error.message'
 }
