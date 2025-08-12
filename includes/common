@@ -225,10 +225,12 @@ __bb_rest_with_callback() {
 
 __emit_pr_list() {
   local jq_transform_with_url='.values[]
+    | select(.draft!=true)
     | { "id": (.id | tostring), "title": .title, "url": .links.html.href }
     | "\(.id)|\(.title)|\(.url)"
   '
   local jq_transform_sans_url='.values[]
+    | select(.draft!=true)
     | { "id": (.id | tostring), "title": .title }
     | "\(.id)|\(.title)"
   '
