@@ -256,7 +256,7 @@ __emit_pr_list() {
     results=""
     until [[ "$next" == "null" || "$next" == "" ]]; do
       response=$(__bb_rest_invoke "$next")
-      results+=$(echo "$response" | jq --raw-output "$jq_transform")
+      results+=$(printf "\n%s" "$(echo "$response" | jq --raw-output "$jq_transform")")
       next=$(echo "$response" | jq --raw-output ".next" || true)
     done
 
