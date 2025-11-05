@@ -66,7 +66,7 @@ Usage: bb-pr [co|completion|whoami|list|approve|checkout|close-branch|decline|dr
   checkout          : check out a pull request in git
   co                : alias for checkout
   message           : copy a reasonable message to the clipboard for merging a PR
-  squash-merge      : merge the PR using the message from 'squash-msg'
+  squash-merge      : merge the PR using the message from 'message'
   merge-after-build : squash merge the PR after all the builds are successful
                       - this is an implicit squash-merge -D
   approve           : approve a PR (though should you from the CLI?)
