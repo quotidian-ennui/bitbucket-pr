@@ -29,6 +29,7 @@ _giturl_to_base() {
 }
 
 EMOJIS_DISABLED=${BB_PR_DISABLE_EMOJIS:-false}
+POLL_INTERVAL_SECS=${BB_PR_POLL_INTERVAL_SECS:-60}
 BITBUCKET_API_BASE="https://api.bitbucket.org/2.0"
 BITBUCKET_REPO_API_URL="$BITBUCKET_API_BASE/repositories"
 GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
