@@ -79,13 +79,16 @@ _bb-pr() {
     bb-pr,draft)
       cmd="bb-pr__draft"
       ;;
+    bb-pr,merge-after-build)
+      cmd="bb-pr__merge-after-build"
+      ;;
     *) ;;
     esac
   done
 
   case "${cmd}" in
   bb-pr)
-    opts="approve checkout close-branch co completion decline help list ready squash-merge message status unapprove whoami draft"
+    opts="approve checkout close-branch co completion decline help list ready squash-merge message status unapprove whoami draft merge-after-build"
     mapfile -t COMPREPLY < <(compgen -W "${opts}" -- "${cur}")
     return 0
     ;;
@@ -143,7 +146,7 @@ _bb-pr() {
       return 0
     fi
     ;;
-  bb-pr__approve | bb-pr__checkout | bb-pr__ready | bb-pr__message | bb-pr__status | bb-pr__unapprove | bb-pr__draft)
+  bb-pr__approve | bb-pr__checkout | bb-pr__ready | bb-pr__message | bb-pr__status | bb-pr__unapprove | bb-pr__draft | bb-pr__merge-after-build)
     mapfile -t COMPREPLY < <(_bb-pr_list_from_fzf)
     printf '\e[5n'
     return 0
