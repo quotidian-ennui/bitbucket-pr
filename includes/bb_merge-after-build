@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+# merge after builds are successful
+action_merge-after-build() {
+  local pr_number=$1
+  local buildStatusJson
+  local buildStatus="IN_PROGRESS"
+
+  pr_number=$(get_pr_number "$pr_number")
+  if [[ -z "$pr_number" ]]; then
+    echo "$(emoji 'WARN') No PR"
+    exit 1
+  fi
+  echo "$(emoji 'VERBOSE') Checking status of $pr_number"
+  while [[ "$buildStatus" == "IN_PROGRESS" ]]; do
+    buildStatus="$(__merge_build_status "$pr_number")"
+    if [[ "$buildStatus" == "IN_PROGRESS" ]]; then
+      echo "$(emoji 'VERBOSE') ...$pr_number still building; waiting for ${POLL_INTERVAL_SECS}s"
+      sleep "$POLL_INTERVAL_SECS"
+    fi
+  done
+
+  if [[ "$buildStatus" == "SUCCESSFUL" ]]; then
+    action_squash-merge "$pr_number" -D
+  else
+    echo "$pr_number builds: $buildStatus"
+    exit 1
+  fi
+}
+
+__merge_build_status() {
+  local pr_number=$1
+  local successCount=0
+  local inProgressCount=0
+  local failureCount=0
+  local lineCount=0
+  local status
+
+  local build_status_url="$BITBUCKET_REPO_API_URL/$BITBUCKET_SLUG/pullrequests/$pr_number/statuses"
+  buildStatusJson=$(__bb_rest_invoke "$build_status_url" | jq -r -c '.values[] | { "name" : .name, "state" : .state, "url": .url }')
+  if [[ -n "$buildStatusJson" ]]; then
+    while IFS= read -r line; do
+      ((lineCount++))
+      status="$(echo "$line" | jq -r '.state')"
+      case "$status" in
+      INPROGRESS)
+        ((inProgressCount++))
+        ;;
+      SUCCESSFUL)
+        ((successCount++))
+        ;;
+      *)
+        # yep, anything not INPROGRESS or SUCCESSFUL = failed.
+        # this is to failsafe in case of API changes.
+        ((failureCount++))
+        ;;
+      esac
+    done <<<"$buildStatusJson"
+    if [[ "$successCount" == "$lineCount" ]]; then
+      echo "SUCCESSFUL"
+    elif [[ $failureCount -gt 0 ]]; then
+      echo "FAILED"
+    else
+      echo "IN_PROGRESS"
+    fi
+  else
+    echo "No Builds in progress?"
+  fi
+}

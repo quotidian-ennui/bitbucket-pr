@@ -39,6 +39,9 @@ Ref:
   - Remember to give yourself write access to pull requests.
   - If you use -D a lot then you may well need to have repository write access as well.
 - If you don't like emojis (or they don't display in your terminal): `export BB_PR_DISABLE_EMOJIS=true`
+- If you want to tune to 'poll-interval' (for `merge-after-build`): `export BB_PR_POLL_INTERVAL_SECS=30`
+  - Will you get rate-limited by Atlassian
+  - Are your _builds that fast_ in which case isn't merge-after-build an irrelevancy?
 
 ```bash
 export BITBUCKET_USER=my_bitbucket_username || my_atlassian_email_address
@@ -54,36 +57,36 @@ eval "$(bb-pr completion)"
 ```
 
 ```console
+
 Tool that helps management of bitbucket pull requests from the commandline
 
-Usage: bb-pr [co|completion|whoami|list|approve|checkout|close-branch|decline|draft|help|message|ready|squash-merge|status|unapprove] [options]
-  help         : show this help
-  list         : list (open) PRs in this repo
-  checkout     : check out a pull request in git
-  co           : alias for checkout
-  message      : copy a reasonable message to the clipboard for merging a PR
-                 (squash-msg still exists for backwards compatibility but
-                 will be removed real soon now to avoid conflicts with completion
-                 convenience)
-  squash-merge : merge the PR using the message from 'squash-msg'
-  approve      : approve a PR (though should you from the CLI?)
-  unapprove    : remove your approval
-  decline      : decline a PR
-  close-branch : change the 'close_source_branch' field
-  completion   : returns command bash completion
-  status       : shows the overall status of the requested PR
-  whoami       : shows some information about your current user
-                 - requires 'account read' scope
-  ready        : mark a PR as ready for review, which means that
-                 .bitbucket/bitbucket-pr.yml is parsed and the
-                 uuids are added as reviewers.
-                 - The PR author will be removed from the potential
-                   list of reviewers.
-                 - This will change the PR from draft to ready
-  draft        : Remove all the reviewers and mark as draft
+Usage: bb-pr [co|completion|whoami|list|approve|checkout|close-branch|decline|draft|help|merge-after-build|message|ready|squash-merge|status|unapprove] [options]
+  help              : show this help
+  list              : list (open) PRs in this repo
+  checkout          : check out a pull request in git
+  co                : alias for checkout
+  message           : copy a reasonable message to the clipboard for merging a PR
+  squash-merge      : merge the PR using the message from 'squash-msg'
+  merge-after-build : squash merge the PR after all the builds are successful
+                      - this is an implicit squash-merge -D
+  approve           : approve a PR (though should you from the CLI?)
+  unapprove         : remove your approval
+  decline           : decline a PR
+  close-branch      : change the 'close_source_branch' field
+  completion        : returns command bash completion
+  status            : shows the overall status of the requested PR
+  whoami            : shows some information about your current user
+                      - requires 'account read' scope
+  ready             : mark a PR as ready for review, which means that
+                      .bitbucket/bitbucket-pr.yml is parsed and the
+                      uuids are added as reviewers.
+                      - The PR author will be removed from the potential
+                       list of reviewers.
+                      - This will change the PR from draft to ready
+  draft             : Remove all the reviewers and mark as draft
 
 'message' | 'squash-merge' | 'approve' | 'unapprove' | 'decline'
-'close-branch' | 'status' | 'ready' | 'draft'
+'close-branch' | 'status' | 'ready' | 'draft' | 'merge-after-build'
 
 Without an argument, the pull request that belongs to the current branch is used.
 
