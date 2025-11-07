@@ -27,11 +27,6 @@ build_actions() {
   PREFERRED_ACTIONS_LIST=${PREFERRED_ACTIONS_LIST%?}
 }
 
-action_squash-msg() {
-  echo -e "\n>>> use of deprecated 'squash-msg', try 'message' instead"
-  action_message "$@"
-}
-
 action_co() {
   action_checkout "$@"
 }
@@ -49,7 +44,7 @@ action_list() {
 }
 
 build_actions
-ACTION_LIST="$PREFERRED_ACTIONS_LIST|squash-msg"
+ACTION_LIST="$PREFERRED_ACTIONS_LIST"
 ACTION=${1:-help}
 if [[ -z "$GIT_REMOTE" && "$ACTION" != "completion" ]]; then
   ACTION="help"
