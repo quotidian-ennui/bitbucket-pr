@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
       - name: shellcheck
         uses: reviewdog/action-shellcheck@4c07458293ac342d477251099501a718ae5ef86e # v1.32.0
         with:
@@ -32,28 +34,14 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
       - name: shfmt
         uses: reviewdog/action-shfmt@d8f080930b9be5847b4f97e9f4122b81a82aaeac # v1.0.4
         with:
           fail_on_error: true
           github_token: ${{ secrets.github_token }}
           shfmt_flags: -i 2
-
-  committed:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    if: |
-      github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-        with:
-          fetch-depth: 0
-      - name: committed
-        uses: crate-ci/committed@bb02f309663f9baced8dbd5fdd80c6369ddf3efd # v1.1.8
-        with:
-          args: --no-merge-commit
 
   # Check the PR title conforms to 'conventional'
   pr-title:
@@ -79,13 +67,14 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
       - name: typos
         uses: crate-ci/typos@626c4bedb751ce0b7f03262ca97ddda9a076ae1c # v1.39.2
 
   dependabot-merge-trigger:
     needs:
       - shellcheck
-      - committed
       - typos
       - pr-title
       - shfmt
