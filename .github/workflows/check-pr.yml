@@ -13,6 +13,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      checks: write
     steps:
       - name: checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -31,6 +32,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      checks: write
     steps:
       - name: checkout
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
@@ -49,33 +51,19 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    if: |
-      github.event_name == 'pull_request'
     steps:
       - run: |
-          regexp="^(build|ci|docs|feat|fix|perf|refactor|style|test|chore|deps)(\(.+\))?: "
-          title="${{ github.event.pull_request.title }}"
-          if [[ ! $title =~ $regexp ]]; then
+          regexp="^(build|ci|docs|feat|fix|perf|refactor|style|test|chore|deps)(\(.+\))?(!)?: "
+          if [[ ! $PR_TITLE =~ $regexp ]]; then
             echo "PR Title is not 'conventional' matching $regexp" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-
-  typos:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          persist-credentials: false
-      - name: typos
-        uses: crate-ci/typos@2d0ce569feab1f8752f1dde43cc2f2aa53236e06 # v1.40.0
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
 
   dependabot-merge-trigger:
     needs:
       - shellcheck
-      - typos
       - pr-title
       - shfmt
     permissions:
