@@ -1,5 +1,11 @@
 # bitbucket-pr
 
+> __NOTICE__
+>
+> In my day job, we have transitioned from bitbucket to github which means I no longer have any reason to keep adding features/bugfixes to this repository. In fact, real soon now I will in fact lose my access to bitbucket and while I _could_ create a regular user account; I really haven't enjoyed my time working with bitbucket since it doesn't fit my workflow and the behaviour of the REST API actions aren't always reflected immediately when you query the status of a PR.
+>
+> If you have been using it, and you found it useful, then by all means fork it and do what you need to do.
+
 I realise that I've been quite spoilt by the github cli.
 
 I'd like some way of replicating [gh-squash-merge](https://github.com/quotidian-ennui/gh-squash-merge) when playing around with bitbucket PRs.
